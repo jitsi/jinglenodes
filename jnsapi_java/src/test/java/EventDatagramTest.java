@@ -73,7 +73,7 @@ public class EventDatagramTest extends TestCase {
                     cs.get(i).getI().set(0);
             }
 
-            System.out.println("Max: " + max + " Min: " + min + " Avg: " + Math.ceil(tTime / tests));
+            System.out.println("Max: " + max + "ms, Min: " + min + "ms, Avg: " + Math.ceil(tTime / tests)+ "ms");
 
         } catch (IOException e) {
             e.printStackTrace();

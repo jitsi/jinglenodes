@@ -1,19 +1,16 @@
 import junit.framework.TestCase;
-import org.xmpp.jnodes.EventDatagramChannel;
 import org.xmpp.jnodes.DatagramListener;
+import org.xmpp.jnodes.EventDatagramChannel;
 
-import java.net.DatagramPacket;
+import java.io.IOException;
+import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.BindException;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class EventDatagramTest extends TestCase {
 

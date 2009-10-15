@@ -1,6 +1,5 @@
 package org.xmpp.jnodes;
 
-import java.net.DatagramPacket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 

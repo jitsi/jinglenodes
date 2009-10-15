@@ -1,18 +1,19 @@
 package org.xmpp.jnodes;
 
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.nio.channels.DatagramChannel;
-import java.nio.ByteBuffer;
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.net.DatagramPacket;
+import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class EventDatagramChannel {
 
     private final static ExecutorService executorService = Executors.newFixedThreadPool(10);
     private final static ConcurrentHashMap<String, EventDatagramChannel> channels = new ConcurrentHashMap<String, EventDatagramChannel>();
-    private static AtomicInteger idg = new AtomicInteger(10);
+    private static final AtomicInteger idg = new AtomicInteger(10);
 
     // Instance Properties 
     protected final DatagramChannel channel;
@@ -50,8 +51,6 @@ public class EventDatagramChannel {
         };
 
         executorService.submit(task);
-
-
     }
 
     protected EventDatagramChannel(final String id, final DatagramChannel channel, final DatagramListener datagramListener) {
@@ -69,7 +68,6 @@ public class EventDatagramChannel {
         channels.put(c.id, c);
         return c;
     }
-
 
     public int send(final ByteBuffer src, final SocketAddress target) throws IOException {
         return this.channel.send(src, target);

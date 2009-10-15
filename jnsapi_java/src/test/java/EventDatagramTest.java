@@ -40,9 +40,13 @@ public class EventDatagramTest extends TestCase {
                 }
             }
 
+            long tTime = 0;
+            long min = 1000;
+            long max = 0;
+
             for (int h = 0; h < tests; h++) {
 
-                final long delta = System.currentTimeMillis();
+                final long start = System.currentTimeMillis();
 
                 for (int ii = 0; ii < packets; ii++)
                     for (int i = 0; i < num; i++) {
@@ -60,11 +64,16 @@ public class EventDatagramTest extends TestCase {
                     }
                 }
 
-                System.out.println("Elapsed Time: " + (System.currentTimeMillis() - delta));
+                final long d = (System.currentTimeMillis() - start);
+                if (d > max) max = d;
+                if (d < min) min = d;
+                tTime += d;
 
                 for (int i = 0; i < num; i++)
                     cs.get(i).getI().set(0);
             }
+
+            System.out.println("Max: " + max + " Min: " + min + " Avg: " + Math.ceil(tTime / tests));
 
         } catch (IOException e) {
             e.printStackTrace();

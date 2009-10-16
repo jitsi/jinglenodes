@@ -218,11 +218,11 @@ public class EventDatagramTest extends TestCase {
                     final int aux = buffer.position();
                     buffer.rewind();
                     buffer.get(bt, 0, aux);
-                    //if (Arrays.equals(bt, b)) {
-                    i.incrementAndGet();
-                    //} else {
-                    //    System.out.println("Invalid Buffer Content.");
-                    //}
+                    if (Arrays.equals(bt, b)) {
+                        i.incrementAndGet();
+                    } else {
+                        System.out.println("Invalid Buffer Content.");
+                    }
                 }
             }, address);
         }

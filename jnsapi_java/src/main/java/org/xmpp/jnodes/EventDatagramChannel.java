@@ -9,7 +9,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class EventDatagramChannel {
+public class EventDatagramChannel implements ListenerDatagramChannel {
 
     private final static ExecutorService executorService = Executors.newFixedThreadPool(10);
     private final static ConcurrentHashMap<String, EventDatagramChannel> channels = new ConcurrentHashMap<String, EventDatagramChannel>();
@@ -63,7 +63,6 @@ public class EventDatagramChannel {
         final DatagramChannel dc = DatagramChannel.open();
         dc.configureBlocking(false);
         dc.socket().bind(localAddress);
-        dc.configureBlocking(false);
         final EventDatagramChannel c = new EventDatagramChannel(String.valueOf(idg.incrementAndGet()), dc, datagramListener);
         channels.put(c.id, c);
         return c;

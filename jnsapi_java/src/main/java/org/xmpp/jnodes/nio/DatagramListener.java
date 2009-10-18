@@ -1,4 +1,4 @@
-package org.xmpp.jnodes;
+package org.xmpp.jnodes.nio;
 
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;

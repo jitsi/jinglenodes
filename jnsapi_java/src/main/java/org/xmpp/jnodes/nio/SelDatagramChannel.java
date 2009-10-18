@@ -1,4 +1,4 @@
-package org.xmpp.jnodes;
+package org.xmpp.jnodes.nio;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -18,7 +18,7 @@ public class SelDatagramChannel implements ListenerDatagramChannel {
 
     // Instance Properties
     protected final DatagramChannel channel;
-    private final DatagramListener datagramListener;
+    private DatagramListener datagramListener;
 
     private static void init() {
         try {
@@ -60,11 +60,13 @@ public class SelDatagramChannel implements ListenerDatagramChannel {
                                     // If we got the datagram successfully, broadcast the Event
                                     if (clientAddress != null) {
                                         // Execute in a different Thread avoid serialization
-                                        executorService.submit(new Runnable() {
-                                            public void run() {
-                                                sdc.datagramListener.datagramReceived(sdc, b, clientAddress);
-                                            }
-                                        });
+                                        if (sdc.datagramListener != null) {
+                                            executorService.submit(new Runnable() {
+                                                public void run() {
+                                                    sdc.datagramListener.datagramReceived(sdc, b, clientAddress);
+                                                }
+                                            });
+                                        }
                                     }
 
                                 }
@@ -118,5 +120,9 @@ public class SelDatagramChannel implements ListenerDatagramChannel {
             k.cancel();
         }
         channel.close();
+    }
+
+    public void setDatagramListener(DatagramListener listener) {
+        this.datagramListener = listener;
     }
 }

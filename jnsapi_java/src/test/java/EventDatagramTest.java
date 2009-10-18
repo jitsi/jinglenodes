@@ -1,8 +1,8 @@
 import junit.framework.TestCase;
-import org.xmpp.jnodes.DatagramListener;
-import org.xmpp.jnodes.EventDatagramChannel;
-import org.xmpp.jnodes.ListenerDatagramChannel;
-import org.xmpp.jnodes.SelDatagramChannel;
+import org.xmpp.jnodes.nio.EventDatagramChannel;
+import org.xmpp.jnodes.nio.SelDatagramChannel;
+import org.xmpp.jnodes.nio.ListenerDatagramChannel;
+import org.xmpp.jnodes.nio.DatagramListener;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -139,11 +139,11 @@ public class EventDatagramTest extends TestCase {
                     final int aux = buffer.position();
                     buffer.rewind();
                     buffer.get(bt, 0, aux);
-                    //if (Arrays.equals(bt, b)) {
-                    i.incrementAndGet();
-                    //} else {
-                    //    System.out.println("Invalid Buffer Content.");
-                    //}
+                    if (Arrays.equals(bt, b)) {
+                        i.incrementAndGet();
+                    } else {
+                        System.out.println("Invalid Buffer Content.");
+                    }
                 }
             };
 

@@ -1,4 +1,4 @@
-package org.xmpp.jnodes;
+package org.xmpp.jnodes.nio;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -17,7 +17,7 @@ public class EventDatagramChannel implements ListenerDatagramChannel {
 
     // Instance Properties 
     protected final DatagramChannel channel;
-    private final DatagramListener datagramListener;
+    private DatagramListener datagramListener;
     private final String id;
 
     static {
@@ -32,12 +32,14 @@ public class EventDatagramChannel implements ListenerDatagramChannel {
                                 if (channel.channel.isOpen()) {
                                     final SocketAddress addr = channel.channel.receive(b);
                                     if (addr != null) {
-                                        // Execute in a different Thread avoid serialization
-                                        executorService.submit(new Runnable() {
-                                            public void run() {
-                                                channel.datagramListener.datagramReceived(channel, b, addr);
-                                            }
-                                        });
+                                        if (channel.datagramListener != null) {
+                                            // Execute in a different Thread avoid serialization
+                                            executorService.submit(new Runnable() {
+                                                public void run() {
+                                                    channel.datagramListener.datagramReceived(channel, b, addr);
+                                                }
+                                            });
+                                        }
                                     }
                                 }
                             } catch (IOException e) {
@@ -72,6 +74,10 @@ public class EventDatagramChannel implements ListenerDatagramChannel {
 
     public int send(final ByteBuffer src, final SocketAddress target) throws IOException {
         return this.channel.send(src, target);
+    }
+
+    public void setDatagramListener(DatagramListener listener) {
+        this.datagramListener = listener;
     }
 
     public void close() throws IOException {

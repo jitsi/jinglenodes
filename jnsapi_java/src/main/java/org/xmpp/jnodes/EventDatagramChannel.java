@@ -29,14 +29,16 @@ public class EventDatagramChannel implements ListenerDatagramChannel {
                         for (final EventDatagramChannel channel : channels.values()) {
                             try {
                                 final ByteBuffer b = ByteBuffer.allocateDirect(1450);
-                                final SocketAddress addr = channel.channel.receive(b);
-                                if (addr != null) {
-                                    // Execute in a different Thread avoid serialization
-                                    executorService.submit(new Runnable() {
-                                        public void run() {
-                                            channel.datagramListener.datagramReceived(channel, b, addr);
-                                        }
-                                    });
+                                if (channel.channel.isOpen()) {
+                                    final SocketAddress addr = channel.channel.receive(b);
+                                    if (addr != null) {
+                                        // Execute in a different Thread avoid serialization
+                                        executorService.submit(new Runnable() {
+                                            public void run() {
+                                                channel.datagramListener.datagramReceived(channel, b, addr);
+                                            }
+                                        });
+                                    }
                                 }
                             } catch (IOException e) {
                                 e.printStackTrace();

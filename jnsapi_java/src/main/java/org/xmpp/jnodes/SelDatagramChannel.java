@@ -31,7 +31,7 @@ public class SelDatagramChannel implements ListenerDatagramChannel {
                     while (true) {
                         try {
 
-                            final int n = selector.select();
+                            final int n = selector.select(10);
 
                             if (n == 0) continue;
 

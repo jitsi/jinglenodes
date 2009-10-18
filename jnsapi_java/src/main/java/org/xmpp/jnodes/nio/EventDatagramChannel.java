@@ -30,7 +30,10 @@ public class EventDatagramChannel implements ListenerDatagramChannel {
                             try {
                                 final ByteBuffer b = ByteBuffer.allocateDirect(1450);
                                 if (channel.channel.isOpen()) {
-                                    final SocketAddress addr = channel.channel.receive(b);
+                                    final SocketAddress addr;
+                                    synchronized (channel.channel) {
+                                        addr = channel.channel.receive(b);
+                                    }
                                     if (addr != null) {
                                         if (channel.datagramListener != null) {
                                             // Execute in a different Thread avoid serialization
@@ -53,7 +56,6 @@ public class EventDatagramChannel implements ListenerDatagramChannel {
                 }
             }
         };
-
         executorService.submit(task);
     }
 
@@ -82,6 +84,8 @@ public class EventDatagramChannel implements ListenerDatagramChannel {
 
     public void close() throws IOException {
         channels.remove(id);
-        channel.close();
+        synchronized (channel) {
+            channel.close();
+        }
     }
 }

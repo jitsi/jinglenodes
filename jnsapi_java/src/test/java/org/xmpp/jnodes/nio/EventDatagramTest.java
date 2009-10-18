@@ -1,8 +1,6 @@
+package org.xmpp.jnodes.nio;
+
 import junit.framework.TestCase;
-import org.xmpp.jnodes.nio.EventDatagramChannel;
-import org.xmpp.jnodes.nio.SelDatagramChannel;
-import org.xmpp.jnodes.nio.ListenerDatagramChannel;
-import org.xmpp.jnodes.nio.DatagramListener;
 
 import java.io.IOException;
 import java.net.BindException;

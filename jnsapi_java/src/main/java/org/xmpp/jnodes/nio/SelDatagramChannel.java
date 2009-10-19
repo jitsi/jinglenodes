@@ -24,7 +24,7 @@ public class SelDatagramChannel implements ListenerDatagramChannel {
         try {
             selector = Selector.open();
 
-            while (!selector.isOpen()) ;
+            while (!selector.isOpen()) Thread.yield();
 
             final Runnable task = new Runnable() {
                 public void run() {
@@ -56,7 +56,10 @@ public class SelDatagramChannel implements ListenerDatagramChannel {
                                     }
 
                                     final ByteBuffer b = ByteBuffer.allocateDirect(1450);
-                                    final SocketAddress clientAddress = sdc.channel.receive(b);
+                                    final SocketAddress clientAddress;
+                                    synchronized (sdc) {
+                                        clientAddress = sdc.channel.receive(b);
+                                    }
                                     // If we got the datagram successfully, broadcast the Event
                                     if (clientAddress != null) {
                                         // Execute in a different Thread avoid serialization
@@ -75,7 +78,6 @@ public class SelDatagramChannel implements ListenerDatagramChannel {
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
-
                         catch (Throwable t) {
                             t.printStackTrace();
                         }
@@ -119,7 +121,9 @@ public class SelDatagramChannel implements ListenerDatagramChannel {
         if (k != null) {
             k.cancel();
         }
-        channel.close();
+        synchronized (this) {
+            channel.close();
+        }
     }
 
     public void setDatagramListener(DatagramListener listener) {

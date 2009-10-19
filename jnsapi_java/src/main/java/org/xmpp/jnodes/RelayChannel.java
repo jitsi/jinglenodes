@@ -13,19 +13,25 @@ public class RelayChannel {
 
     private final ListenerDatagramChannel channelA;
     private final ListenerDatagramChannel channelB;
+    private final SocketAddress addressA;
+    private final SocketAddress addressB;
     private SocketAddress lastReceivedA;
     private SocketAddress lastReceivedB;
 
     public RelayChannel(final String hostA, final int portA, final String hostB, final int portB) throws IOException {
 
-        channelA = EventDatagramChannel.open(null, new InetSocketAddress(hostA, portA));
-        channelB = EventDatagramChannel.open(null, new InetSocketAddress(hostB, portB));
+        addressA = new InetSocketAddress(hostA, portA);
+        addressB = new InetSocketAddress(hostB, portB);
+
+        channelA = EventDatagramChannel.open(null, addressA);
+        channelB = EventDatagramChannel.open(null, addressB);
 
         channelA.setDatagramListener(new DatagramListener() {
-            public void datagramReceived(ListenerDatagramChannel channel, ByteBuffer buffer, SocketAddress address) {
+            public void datagramReceived(final ListenerDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
                 lastReceivedA = address;
                 if (lastReceivedB != null) {
                     try {
+                        buffer.flip();
                         channelB.send(buffer, lastReceivedB);
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -35,10 +41,11 @@ public class RelayChannel {
         });
 
         channelB.setDatagramListener(new DatagramListener() {
-            public void datagramReceived(ListenerDatagramChannel channel, ByteBuffer buffer, SocketAddress address) {
+            public void datagramReceived(final ListenerDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
                 lastReceivedB = address;
                 if (lastReceivedA != null) {
                     try {
+                        buffer.flip();
                         channelA.send(buffer, lastReceivedA);
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -47,6 +54,14 @@ public class RelayChannel {
             }
         });
 
+    }
+
+    public SocketAddress getAddressB() {
+        return addressB;
+    }
+
+    public SocketAddress getAddressA() {
+        return addressA;
     }
 
     public void close() {

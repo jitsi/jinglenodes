@@ -17,20 +17,40 @@ public class RelayChannelTest extends TestCase {
 
     final static String encode = "UTF-8";
     final static String localIP = "127.0.0.1";
-    private final static ExecutorService executorService = Executors.newFixedThreadPool(10);
+    private final static ExecutorService executorService = Executors.newCachedThreadPool();
 
     public void testDatagramChannels() {
+        final List<Future> futures = new ArrayList<Future>();
 
-        for (int i = 0; i < 20; i++) {
-            socketTest(new TestSocket.ChannelProvider() {
-                public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
-                    return SelDatagramChannel.open(datagramListener, address);
-                }
+        for (int i = 0; i < 8; i++) {
+            final int ii = i;
+            futures.add(executorService.submit(new Runnable() {
+                public void run() {
+                    socketTest(new TestSocket.ChannelProvider() {
+                        public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
+                            return SelDatagramChannel.open(datagramListener, address);
+                        }
 
-                public String getName() {
-                    return "SelDatagramChannel";
+                        public String getName() {
+                            return "SelDatagramChannel";
+                        }
+                    }, 500 * ii + 10000, 500 * ii + 10250);
                 }
-            });
+            }));
+        }
+        boolean finished = false;
+
+        while (!finished) {
+            try {
+                Thread.sleep(5000);
+                Thread.yield();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            finished = true;
+            for (final Future f : futures) {
+                finished &= f.isDone();
+            }
         }
     }
 
@@ -53,7 +73,7 @@ public class RelayChannelTest extends TestCase {
         }
     }
 
-    public void socketTest(final TestSocket.ChannelProvider provider) {
+    public void socketTest(final TestSocket.ChannelProvider provider, final int socketRange, final int relayRange) {
         try {
 
             final int num = 10;
@@ -67,7 +87,7 @@ public class RelayChannelTest extends TestCase {
             for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
                 for (int t = 0; t < 50; t++) {
                     try {
-                        final TestSocket s = new TestSocket(localIP, 50000 + j, provider);
+                        final TestSocket s = new TestSocket(localIP, socketRange + j, provider);
                         cs.add(s);
                         break;
                     } catch (BindException e) {
@@ -77,7 +97,7 @@ public class RelayChannelTest extends TestCase {
                 if (i % 2 == 0) {
                     for (int t = 0; t < 50; t++) {
                         try {
-                            final RelayChannel c = new RelayChannel(localIP, 60000 + l, localIP, 60000 + l + 1);
+                            final RelayChannel c = new RelayChannel(localIP, relayRange + l, localIP, relayRange + l + 1);
                             rc.add(c);
                             break;
                         } catch (BindException e) {

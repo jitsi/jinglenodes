@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class RelayChannelTest extends TestCase {
 
@@ -56,7 +57,7 @@ public class RelayChannelTest extends TestCase {
         try {
 
             final int num = 10;
-            final int packets = 30;
+            final int packets = 25;
             final int tests = 100;
             final List<TestSocket> cs = new ArrayList<TestSocket>();
             final List<RelayChannel> rc = new ArrayList<RelayChannel>();
@@ -89,13 +90,14 @@ public class RelayChannelTest extends TestCase {
             long tTime = 0;
             long min = 1000;
             long max = 0;
+            final List<Future> futures = new ArrayList<Future>();
 
             for (int h = 0; h < tests; h++) {
 
                 final long start = System.currentTimeMillis();
 
                 for (int ii = 0; ii < packets; ii++) {
-                    executorService.submit(new Runnable() {
+                    futures.add(executorService.submit(new Runnable() {
                         public void run() {
                             for (int i = 0; i < num; i++) {
                                 final TestSocket a = cs.get(i);
@@ -111,9 +113,20 @@ public class RelayChannelTest extends TestCase {
                                 }
                             }
                         }
-                    });
+                    }));
                 }
+
                 boolean finished = false;
+
+                while (!finished) {
+                    Thread.sleep(1);
+                    finished = true;
+                    for (final Future f : futures) {
+                        finished &= f.isDone();
+                    }
+                }
+
+                finished = false;
                 final int target = packets - 1;
                 while (!finished) {
                     Thread.sleep(1);

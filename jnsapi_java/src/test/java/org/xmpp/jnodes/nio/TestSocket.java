@@ -14,6 +14,7 @@ public class TestSocket {
         public String getName();
     }
 
+    final static String encode = "UTF-8";
     final private String msg;
     final private byte[] b;
     final private AtomicInteger i;
@@ -23,7 +24,7 @@ public class TestSocket {
 
     public TestSocket(final String localIP, final int port, final ChannelProvider provider) throws IOException {
         msg = String.valueOf(Math.random() * 10);
-        b = msg.getBytes(EventDatagramTest.encode);
+        b = msg.getBytes(encode);
         expectedBuffer = ByteBuffer.wrap(b);
         i = new AtomicInteger(0);
         address = new InetSocketAddress(localIP, port);

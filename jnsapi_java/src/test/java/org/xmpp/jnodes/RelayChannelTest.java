@@ -6,6 +6,7 @@ import org.xmpp.jnodes.nio.*;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.SocketAddress;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -29,6 +30,25 @@ public class RelayChannelTest extends TestCase {
                     return "SelDatagramChannel";
                 }
             });
+        }
+    }
+
+
+    public void testDatagramChannelsExternal(final int portA, final int portB) {
+
+        final SocketAddress sa = new InetSocketAddress(localIP, portA);
+        final SocketAddress sb = new InetSocketAddress(localIP, portB);
+
+        for (int i = 0; i < 5; i++) {
+            socketTest(new TestSocket.ChannelProvider() {
+                public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
+                    return SelDatagramChannel.open(datagramListener, address);
+                }
+
+                public String getName() {
+                    return "SelDatagramChannel";
+                }
+            }, sa, sb);
         }
     }
 
@@ -129,4 +149,75 @@ public class RelayChannelTest extends TestCase {
 
     }
 
+    public void socketTest(final TestSocket.ChannelProvider provider, final SocketAddress sa, final SocketAddress sb) {
+        try {
+
+            final int num = 2;
+            int packets = 30;
+            int tests = 100;
+            final List<TestSocket> cs = new ArrayList<TestSocket>();
+
+            assertEquals(num % 2, 0);
+
+            for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
+                for (int t = 0; t < 50; t++) {
+                    try {
+                        final TestSocket s = new TestSocket(localIP, 50000 + j, provider);
+                        cs.add(s);
+                        break;
+                    } catch (BindException e) {
+                        j++;
+                    }
+                }
+            }
+
+            long tTime = 0;
+            long min = 1000;
+            long max = 0;
+
+            for (int h = 0; h < tests; h++) {
+
+                final long start = System.currentTimeMillis();
+
+                for (int ii = 0; ii < packets; ii++)
+                    for (int i = 0; i < num; i++) {
+                        final TestSocket a = cs.get(i);
+                        final TestSocket b = i % 2 == 0 ? cs.get(i + 1) : cs.get(i - 1);
+
+                        final SocketAddress d = i % 2 == 0 ? sa : sb;
+
+                        a.getChannel().send(b.getExpectedBuffer().duplicate(), d);
+                    }
+
+                boolean finished = false;
+                final int target = packets - 1;
+                while (!finished) {
+                    Thread.sleep(1);
+                    finished = true;
+                    for (int i = 0; i < num; i++) {
+                        finished &= cs.get(i).getI().get() >= target;
+                    }
+                }
+
+                final long d = (System.currentTimeMillis() - start);
+                if (d > max) max = d;
+                if (d < min) min = d;
+                tTime += d;
+
+                for (final TestSocket ts : cs)
+                    ts.getI().set(0);
+            }
+
+            System.out.println(provider.getName() + " -> Max: " + max + "ms, Min: " + min + "ms, Avg: " + Math.ceil(tTime / tests) + "ms");
+
+            for (final TestSocket ts : cs) {
+                ts.getChannel().close();
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 }

@@ -19,6 +19,7 @@ public class SelDatagramChannel implements ListenerDatagramChannel {
     // Instance Properties
     protected final DatagramChannel channel;
     private DatagramListener datagramListener;
+    private final static Object obj = new Object();
 
     private static void init() {
         try {
@@ -30,10 +31,17 @@ public class SelDatagramChannel implements ListenerDatagramChannel {
                 public void run() {
                     while (true) {
                         try {
+                            final int n;
 
-                            final int n = selector.select(10);
+                            synchronized (obj) {
+                                n = selector.select(500);
+                            }
 
-                            if (n == 0) continue;
+                            if (n == 0) {
+                                Thread.sleep(50);
+                                Thread.yield();
+                                continue;
+                            }
 
                             final Set keys = selector.selectedKeys();
 
@@ -108,7 +116,10 @@ public class SelDatagramChannel implements ListenerDatagramChannel {
         dc.configureBlocking(false);
         dc.socket().bind(localAddress);
         final SelDatagramChannel c = new SelDatagramChannel(dc, datagramListener);
-        dc.register(selector, SelectionKey.OP_READ, c);
+        synchronized (obj) {
+            selector.wakeup();
+            dc.register(selector, SelectionKey.OP_READ, c);
+        }
         return c;
     }
 

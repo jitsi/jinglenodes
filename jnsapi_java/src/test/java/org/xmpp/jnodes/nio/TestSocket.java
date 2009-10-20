@@ -14,7 +14,6 @@ public class TestSocket {
         public String getName();
     }
 
-
     final private String msg;
     final private byte[] b;
     final private AtomicInteger i;
@@ -32,10 +31,10 @@ public class TestSocket {
         final DatagramListener dl = new DatagramListener() {
             public void datagramReceived(final ListenerDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
                 try {
-                    final byte[] bt = new byte[b.length];
                     final int aux = buffer.position();
+                    final byte[] bt = new byte[b.length];
                     buffer.rewind();
-                    buffer.get(bt, 0, aux);
+                    buffer.get(bt, 0, b.length);
                     if (Arrays.equals(bt, b)) {
                         i.incrementAndGet();
                     } else {

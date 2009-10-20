@@ -3,6 +3,7 @@ package org.xmpp.jnodes;
 import org.xmpp.jnodes.nio.DatagramListener;
 import org.xmpp.jnodes.nio.EventDatagramChannel;
 import org.xmpp.jnodes.nio.ListenerDatagramChannel;
+import org.xmpp.jnodes.nio.SelDatagramChannel;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -23,8 +24,8 @@ public class RelayChannel {
         addressA = new InetSocketAddress(hostA, portA);
         addressB = new InetSocketAddress(hostB, portB);
 
-        channelA = EventDatagramChannel.open(null, addressA);
-        channelB = EventDatagramChannel.open(null, addressB);
+        channelA = SelDatagramChannel.open(null, addressA);
+        channelB = SelDatagramChannel.open(null, addressB);
 
         channelA.setDatagramListener(new DatagramListener() {
             public void datagramReceived(final ListenerDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {

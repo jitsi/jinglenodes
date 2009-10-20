@@ -16,16 +16,16 @@ public class RelayChannelTest extends TestCase {
 
     public void testDatagramChannels() {
 
-        for (int i = 0; i < 5; i++) {
-            socketTest(new TestSocket.ChannelProvider() {
-                public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
-                    return EventDatagramChannel.open(datagramListener, address);
-                }
-
-                public String getName() {
-                    return "EventDatagramChannel";
-                }
-            });
+        for (int i = 0; i < 20; i++) {
+//            socketTest(new TestSocket.ChannelProvider() {
+//                public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
+//                    return EventDatagramChannel.open(datagramListener, address);
+//                }
+//
+//                public String getName() {
+//                    return "EventDatagramChannel";
+//                }
+//            });
 
             socketTest(new TestSocket.ChannelProvider() {
                 public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
@@ -43,7 +43,7 @@ public class RelayChannelTest extends TestCase {
         try {
 
             int num = 10;
-            int packets = 50;
+            int packets = 30;
             int tests = 100;
             final List<TestSocket> cs = new ArrayList<TestSocket>();
             final List<RelayChannel> rc = new ArrayList<RelayChannel>();

@@ -8,25 +8,18 @@ import java.net.BindException;
 import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class RelayChannelTest extends TestCase {
 
     final static String encode = "UTF-8";
     final static String localIP = "127.0.0.1";
+    private final static ExecutorService executorService = Executors.newFixedThreadPool(10);
 
     public void testDatagramChannels() {
 
         for (int i = 0; i < 20; i++) {
-//            socketTest(new TestSocket.ChannelProvider() {
-//                public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
-//                    return EventDatagramChannel.open(datagramListener, address);
-//                }
-//
-//                public String getName() {
-//                    return "EventDatagramChannel";
-//                }
-//            });
-
             socketTest(new TestSocket.ChannelProvider() {
                 public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
                     return SelDatagramChannel.open(datagramListener, address);
@@ -42,9 +35,9 @@ public class RelayChannelTest extends TestCase {
     public void socketTest(final TestSocket.ChannelProvider provider) {
         try {
 
-            int num = 10;
-            int packets = 30;
-            int tests = 100;
+            final int num = 10;
+            final int packets = 30;
+            final int tests = 100;
             final List<TestSocket> cs = new ArrayList<TestSocket>();
             final List<RelayChannel> rc = new ArrayList<RelayChannel>();
 
@@ -81,17 +74,25 @@ public class RelayChannelTest extends TestCase {
 
                 final long start = System.currentTimeMillis();
 
-                for (int ii = 0; ii < packets; ii++)
-                    for (int i = 0; i < num; i++) {
-                        final TestSocket a = cs.get(i);
-                        final TestSocket b = i % 2 == 0 ? cs.get(i + 1) : cs.get(i - 1);
+                for (int ii = 0; ii < packets; ii++) {
+                    executorService.submit(new Runnable() {
+                        public void run() {
+                            for (int i = 0; i < num; i++) {
+                                final TestSocket a = cs.get(i);
+                                final TestSocket b = i % 2 == 0 ? cs.get(i + 1) : cs.get(i - 1);
 
-                        final RelayChannel c = rc.get(i / 2);
-                        final SocketAddress d = i % 2 == 0 ? c.getAddressA() : c.getAddressB();
+                                final RelayChannel c = rc.get(i / 2);
+                                final SocketAddress d = i % 2 == 0 ? c.getAddressA() : c.getAddressB();
 
-                        a.getChannel().send(b.getExpectedBuffer().duplicate(), d);
-                    }
-
+                                try {
+                                    a.getChannel().send(b.getExpectedBuffer().duplicate(), d);
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+                    });
+                }
                 boolean finished = false;
                 final int target = packets - 1;
                 while (!finished) {

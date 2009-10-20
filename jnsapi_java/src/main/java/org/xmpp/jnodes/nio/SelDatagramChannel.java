@@ -34,8 +34,8 @@ public class SelDatagramChannel implements ListenerDatagramChannel {
                             final int n;
 
                             synchronized (obj) {
-                                n = selector.select(500);
                             }
+                            n = selector.select();
 
                             if (n == 0) {
                                 Thread.sleep(50);
@@ -130,7 +130,10 @@ public class SelDatagramChannel implements ListenerDatagramChannel {
     public void close() throws IOException {
         final SelectionKey k = channel.keyFor(selector);
         if (k != null) {
-            k.cancel();
+            synchronized (obj) {
+                selector.wakeup();
+                k.cancel();
+            }
         }
         synchronized (this) {
             channel.close();

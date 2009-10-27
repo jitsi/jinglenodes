@@ -2,6 +2,7 @@ package org.xmpp.jnodes;
 
 import junit.framework.TestCase;
 import org.xmpp.jnodes.nio.*;
+import org.junit.Ignore;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class RelayChannelTest extends TestCase {
 
@@ -34,7 +36,7 @@ public class RelayChannelTest extends TestCase {
                         public String getName() {
                             return "SelDatagramChannel";
                         }
-                    }, 500 * ii + 10000, 500 * ii + 10250);
+                    }, 1500 * ii + 10000, 1500 * ii + 11000);
                 }
             }));
         }
@@ -54,7 +56,7 @@ public class RelayChannelTest extends TestCase {
         }
     }
 
-
+    @Ignore("Meant to be ran manually")
     public void testDatagramChannelsExternal(final int portA, final int portB) {
 
         final SocketAddress sa = new InetSocketAddress(localIP, portA);
@@ -77,12 +79,10 @@ public class RelayChannelTest extends TestCase {
         try {
 
             final int num = 10;
-            final int packets = 25;
-            final int tests = 100;
+            final int packets = 15;
+            final int tests = 50;
             final List<TestSocket> cs = new ArrayList<TestSocket>();
             final List<RelayChannel> rc = new ArrayList<RelayChannel>();
-
-            assertEquals(num % 2, 0);
 
             for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
                 for (int t = 0; t < 50; t++) {
@@ -110,15 +110,17 @@ public class RelayChannelTest extends TestCase {
             long tTime = 0;
             long min = 1000;
             long max = 0;
-            final List<Future> futures = new ArrayList<Future>();
+            final AtomicInteger fSent = new AtomicInteger(0);
 
             for (int h = 0; h < tests; h++) {
+                final List<Future> futures = new ArrayList<Future>();
 
                 final long start = System.currentTimeMillis();
 
                 for (int ii = 0; ii < packets; ii++) {
                     futures.add(executorService.submit(new Runnable() {
                         public void run() {
+                            final AtomicInteger sent = new AtomicInteger(0);
                             for (int i = 0; i < num; i++) {
                                 final TestSocket a = cs.get(i);
                                 final TestSocket b = i % 2 == 0 ? cs.get(i + 1) : cs.get(i - 1);
@@ -127,11 +129,17 @@ public class RelayChannelTest extends TestCase {
                                 final SocketAddress d = i % 2 == 0 ? c.getAddressA() : c.getAddressB();
 
                                 try {
-                                    a.getChannel().send(b.getExpectedBuffer().duplicate(), d);
+                                    int ss = 0;
+                                    while (ss == 0) {
+                                        ss = a.getChannel().send(b.getExpectedBuffer().duplicate(), d);
+                                        if (ss == 0) System.out.println("Retrying Send...");
+                                        else sent.incrementAndGet();
+                                    }
                                 } catch (IOException e) {
                                     e.printStackTrace();
                                 }
                             }
+                            fSent.incrementAndGet();
                         }
                     }));
                 }
@@ -149,11 +157,14 @@ public class RelayChannelTest extends TestCase {
                 finished = false;
                 final int target = packets - 1;
                 while (!finished) {
-                    Thread.sleep(1);
-                    finished = true;
-                    for (int i = 0; i < num; i++) {
-                        finished &= cs.get(i).getI().get() >= target;
+                    Thread.sleep(5);
+                    int a = 0;
+                    int b = 0;
+                    for (final TestSocket s : cs) {
+                        if (s.getI().get() >= packets) b++;
+                        else if (s.getI().get() >= target) a++;
                     }
+                    finished = a + b == num;
                 }
 
                 final long d = (System.currentTimeMillis() - start);
@@ -189,8 +200,6 @@ public class RelayChannelTest extends TestCase {
             int packets = 30;
             int tests = 100;
             final List<TestSocket> cs = new ArrayList<TestSocket>();
-
-            assertEquals(num % 2, 0);
 
             for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
                 for (int t = 0; t < 50; t++) {

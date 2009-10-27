@@ -1,13 +1,11 @@
 package org.xmpp.jnodes;
 
-import org.xmpp.jnodes.nio.DatagramListener;
-import org.xmpp.jnodes.nio.EventDatagramChannel;
-import org.xmpp.jnodes.nio.ListenerDatagramChannel;
-import org.xmpp.jnodes.nio.SelDatagramChannel;
+import org.xmpp.jnodes.nio.*;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.BindException;
 import java.nio.ByteBuffer;
 
 public class RelayChannel {
@@ -18,11 +16,33 @@ public class RelayChannel {
     private final SocketAddress addressB;
     private SocketAddress lastReceivedA;
     private SocketAddress lastReceivedB;
+    private final int portA;
+    private final int portB;
+    private final String ip;
 
-    public RelayChannel(final String hostA, final int portA, final String hostB, final int portB) throws IOException {
+    public static RelayChannel createLocalRelayChannel() throws IOException {
 
-        addressA = new InetSocketAddress(hostA, portA);
-        addressB = new InetSocketAddress(hostB, portB);
+        final String ip = LocalIPResolver.getLocalIP();
+        int range = 40000;
+        IOException be = null;
+
+        for (int t = 0; t < 50; t++) {
+            try {
+                int a = Math.round((int) (Math.random() * 10000)) + range;
+                return new RelayChannel(ip, a, a + 1);
+            } catch (BindException e) {
+                be = e;
+            } catch (IOException e) {
+                be = e;
+            }
+        }
+        throw be;
+    }
+
+    public RelayChannel(final String host, final int portA, final int portB) throws IOException {
+
+        addressA = new InetSocketAddress(host, portA);
+        addressB = new InetSocketAddress(host, portB);
 
         channelA = SelDatagramChannel.open(null, addressA);
         channelB = SelDatagramChannel.open(null, addressB);
@@ -55,6 +75,9 @@ public class RelayChannel {
             }
         });
 
+        this.portA = portA;
+        this.portB = portB;
+        this.ip = host;
     }
 
     public SocketAddress getAddressB() {
@@ -63,6 +86,18 @@ public class RelayChannel {
 
     public SocketAddress getAddressA() {
         return addressA;
+    }
+
+    public int getPortA() {
+        return portA;
+    }
+
+    public int getPortB() {
+        return portB;
+    }
+
+    public String getIp() {
+        return ip;
     }
 
     public void close() {

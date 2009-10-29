@@ -1,13 +1,16 @@
 package org.xmpp.jnodes;
 
 import junit.framework.TestCase;
-import org.xmpp.jnodes.nio.*;
 import org.junit.Ignore;
+import org.xmpp.jnodes.nio.DatagramListener;
+import org.xmpp.jnodes.nio.ListenerDatagramChannel;
+import org.xmpp.jnodes.nio.SelDatagramChannel;
+import org.xmpp.jnodes.nio.TestSocket;
 
 import java.io.IOException;
 import java.net.BindException;
-import java.net.SocketAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -57,12 +60,12 @@ public class RelayChannelTest extends TestCase {
     }
 
     @Ignore("Meant to be ran manually")
-    public void testDatagramChannelsExternal(final int portA, final int portB) {
+    public static void testDatagramChannelsExternal(final int portA, final int portB) {
 
         final SocketAddress sa = new InetSocketAddress(localIP, portA);
         final SocketAddress sb = new InetSocketAddress(localIP, portB);
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 1; i++) {
             socketTest(new TestSocket.ChannelProvider() {
                 public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
                     return SelDatagramChannel.open(datagramListener, address);
@@ -97,7 +100,7 @@ public class RelayChannelTest extends TestCase {
                 if (i % 2 == 0) {
                     for (int t = 0; t < 50; t++) {
                         try {
-                            final RelayChannel c = new RelayChannel(localIP, relayRange + l, localIP, relayRange + l + 1);
+                            final RelayChannel c = new RelayChannel(localIP, relayRange + l, relayRange + l + 1);
                             rc.add(c);
                             break;
                         } catch (BindException e) {
@@ -193,12 +196,12 @@ public class RelayChannelTest extends TestCase {
 
     }
 
-    public void socketTest(final TestSocket.ChannelProvider provider, final SocketAddress sa, final SocketAddress sb) {
+    public static void socketTest(final TestSocket.ChannelProvider provider, final SocketAddress sa, final SocketAddress sb) {
         try {
 
             final int num = 2;
             int packets = 30;
-            int tests = 100;
+            int tests = 1000;
             final List<TestSocket> cs = new ArrayList<TestSocket>();
 
             for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
@@ -261,5 +264,10 @@ public class RelayChannelTest extends TestCase {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
+    }
+
+    public static void main(String args[]) {
+        testDatagramChannelsExternal(Integer.valueOf(args[1]), Integer.valueOf(args[2]));
     }
 }

@@ -33,9 +33,9 @@ public class TestSocket {
             public void datagramReceived(final ListenerDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
                 try {
                     final int aux = buffer.position();
-                    final byte[] bt = new byte[b.length];
+                    final byte[] bt = new byte[aux];
                     buffer.rewind();
-                    buffer.get(bt, 0, b.length);
+                    buffer.get(bt, 0, aux);
                     if (Arrays.equals(bt, b)) {
                         i.incrementAndGet();
                     } else {

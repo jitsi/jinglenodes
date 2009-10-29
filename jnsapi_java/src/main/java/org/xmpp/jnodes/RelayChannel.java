@@ -16,9 +16,12 @@ public class RelayChannel {
     private final SocketAddress addressB;
     private SocketAddress lastReceivedA;
     private SocketAddress lastReceivedB;
+    private long lastReceivedTimeA;
+    private long lastReceivedTimeB;
     private final int portA;
     private final int portB;
     private final String ip;
+    private Object attachment;
 
     public static RelayChannel createLocalRelayChannel() throws IOException {
 
@@ -50,6 +53,8 @@ public class RelayChannel {
         channelA.setDatagramListener(new DatagramListener() {
             public void datagramReceived(final ListenerDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
                 lastReceivedA = address;
+                lastReceivedTimeA = System.currentTimeMillis();
+
                 if (lastReceivedB != null) {
                     try {
                         buffer.flip();
@@ -64,6 +69,7 @@ public class RelayChannel {
         channelB.setDatagramListener(new DatagramListener() {
             public void datagramReceived(final ListenerDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
                 lastReceivedB = address;
+                lastReceivedTimeB = System.currentTimeMillis();
                 if (lastReceivedA != null) {
                     try {
                         buffer.flip();
@@ -98,6 +104,22 @@ public class RelayChannel {
 
     public String getIp() {
         return ip;
+    }
+
+    public long getLastReceivedTimeA() {
+        return lastReceivedTimeA;
+    }
+
+    public long getLastReceivedTimeB() {
+        return lastReceivedTimeB;
+    }
+
+    public Object getAttachment() {
+        return attachment;
+    }
+
+    public void setAttachment(Object attachment) {
+        this.attachment = attachment;
     }
 
     public void close() {

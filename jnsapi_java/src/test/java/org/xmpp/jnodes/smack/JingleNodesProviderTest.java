@@ -4,14 +4,15 @@ import junit.framework.TestCase;
 
 public class JingleNodesProviderTest extends TestCase {
 
+    public void testRequestCreation() {
 
+        final JingleChannelIQ request = new JingleChannelIQ();
+        request.setPacketID("abc");
+        request.setFrom("linus@jn.com");
+        request.setTo("bill@jn.com");
 
-    public void testCreationResult(){
-
-        final JingleNodesProvider provider = new JingleNodesProvider();
-
-        
-
+        assertEquals(request.toXML(), "<iq id=\"abc\" to=\"bill@jn.com\" from=\"linus@jn.com\" type=\"get\"><candidate xmlns='http://jabber.org/protocol/jinglenodes#channel' protocol='udp'/></iq>");
 
     }
+
 }

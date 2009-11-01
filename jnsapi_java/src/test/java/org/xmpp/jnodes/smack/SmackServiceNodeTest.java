@@ -21,8 +21,6 @@ public class SmackServiceNodeTest extends TestCase {
         final String pass2 = "user2";
         final int timeout = 6000;
 
-        XMPPConnection.DEBUG_ENABLED = true;
-
         final SmackServiceNode ssn1 = new SmackServiceNode(server, port, timeout);
 
         final SmackServiceNode ssn2 = new SmackServiceNode(server, port, timeout);

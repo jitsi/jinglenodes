@@ -56,7 +56,8 @@ public class JingleNodesProvider implements IQProvider {
             } else if (eventType == XmlPullParser.END_TAG) {
                 done = true;
             }
-            parser.next();
+            if (!done)
+                parser.next();
         }
 
         return iq;

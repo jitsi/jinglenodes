@@ -19,6 +19,7 @@ public class JingleChannelIQ extends IQ {
 
     public JingleChannelIQ() {
         this.setType(Type.GET);
+        this.setPacketID(IQ.nextID());
     }
 
     public String getChildElementXML() {
@@ -33,6 +34,10 @@ public class JingleChannelIQ extends IQ {
         str.append("/>");
 
         return str.toString();
+    }
+
+    public boolean isRequest() {
+        return Type.GET.equals(this.getType());
     }
 
     public Protocol getProtocol() {

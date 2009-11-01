@@ -2,10 +2,7 @@ package org.xmpp.jnodes;
 
 import junit.framework.TestCase;
 import org.junit.Ignore;
-import org.xmpp.jnodes.nio.DatagramListener;
-import org.xmpp.jnodes.nio.ListenerDatagramChannel;
-import org.xmpp.jnodes.nio.SelDatagramChannel;
-import org.xmpp.jnodes.nio.TestSocket;
+import org.xmpp.jnodes.nio.*;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -21,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class RelayChannelTest extends TestCase {
 
     final static String encode = "UTF-8";
-    final static String localIP = "127.0.0.1";
+    final static String localIP = LocalIPResolver.getLocalIP();
     private final static ExecutorService executorService = Executors.newCachedThreadPool();
 
     public void testDatagramChannels() {
@@ -60,13 +57,14 @@ public class RelayChannelTest extends TestCase {
     }
 
     @Ignore("Meant to be ran manually")
-    public static void testDatagramChannelsExternal(final int portA, final int portB) {
+    public static boolean testDatagramChannelsExternal(final int portA, final int portB) throws IOException, InterruptedException {
 
         final SocketAddress sa = new InetSocketAddress(localIP, portA);
         final SocketAddress sb = new InetSocketAddress(localIP, portB);
 
-        for (int i = 0; i < 1; i++) {
-            socketTest(new TestSocket.ChannelProvider() {
+        boolean f = true;
+        for (int i = 0; i < 1 && f; i++) {
+            f = socketTest(new TestSocket.ChannelProvider() {
                 public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
                     return SelDatagramChannel.open(datagramListener, address);
                 }
@@ -76,6 +74,7 @@ public class RelayChannelTest extends TestCase {
                 }
             }, sa, sb);
         }
+        return f;
     }
 
     public void socketTest(final TestSocket.ChannelProvider provider, final int socketRange, final int relayRange) {
@@ -196,78 +195,84 @@ public class RelayChannelTest extends TestCase {
 
     }
 
-    public static void socketTest(final TestSocket.ChannelProvider provider, final SocketAddress sa, final SocketAddress sb) {
-        try {
+    public static boolean socketTest(final TestSocket.ChannelProvider provider, final SocketAddress sa, final SocketAddress sb) throws IOException, InterruptedException {
+        final int num = 2;
+        int packets = 30;
+        int tests = 1000;
+        final List<TestSocket> cs = new ArrayList<TestSocket>();
 
-            final int num = 2;
-            int packets = 30;
-            int tests = 1000;
-            final List<TestSocket> cs = new ArrayList<TestSocket>();
-
-            for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
-                for (int t = 0; t < 50; t++) {
-                    try {
-                        final TestSocket s = new TestSocket(localIP, 50000 + j, provider);
-                        cs.add(s);
-                        break;
-                    } catch (BindException e) {
-                        j++;
-                    }
+        for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
+            for (int t = 0; t < 50; t++) {
+                try {
+                    final TestSocket s = new TestSocket(localIP, 50000 + j, provider);
+                    cs.add(s);
+                    break;
+                } catch (BindException e) {
+                    j++;
                 }
             }
+        }
 
-            long tTime = 0;
-            long min = 1000;
-            long max = 0;
+        long tTime = 0;
+        long min = 1000;
+        long max = 0;
+        boolean finished = true;
 
-            for (int h = 0; h < tests; h++) {
+        for (int h = 0; h < tests && finished; h++) {
 
-                final long start = System.currentTimeMillis();
+            final long start = System.currentTimeMillis();
 
-                for (int ii = 0; ii < packets; ii++)
-                    for (int i = 0; i < num; i++) {
-                        final TestSocket a = cs.get(i);
-                        final TestSocket b = i % 2 == 0 ? cs.get(i + 1) : cs.get(i - 1);
+            for (int ii = 0; ii < packets; ii++)
+                for (int i = 0; i < num; i++) {
+                    final TestSocket a = cs.get(i);
+                    final TestSocket b = i % 2 == 0 ? cs.get(i + 1) : cs.get(i - 1);
 
-                        final SocketAddress d = i % 2 == 0 ? sa : sb;
+                    final SocketAddress d = i % 2 == 0 ? sa : sb;
 
-                        a.getChannel().send(b.getExpectedBuffer().duplicate(), d);
-                    }
-
-                boolean finished = false;
-                final int target = packets - 1;
-                while (!finished) {
-                    Thread.sleep(1);
-                    finished = true;
-                    for (int i = 0; i < num; i++) {
-                        finished &= cs.get(i).getI().get() >= target;
-                    }
+                    a.getChannel().send(b.getExpectedBuffer().duplicate(), d);
                 }
 
+            finished = false;
+            final int target = packets - 1;
+            int t = 0;
+            while (!finished && t < packets * tests) {
+                Thread.sleep(1);
+                finished = true;
+                for (int i = 0; i < num; i++) {
+                    finished &= cs.get(i).getI().get() >= target;
+                }
+                t++;
+            }
+
+            if (finished) {
                 final long d = (System.currentTimeMillis() - start);
                 if (d > max) max = d;
                 if (d < min) min = d;
                 tTime += d;
-
-                for (final TestSocket ts : cs)
-                    ts.getI().set(0);
             }
 
+            for (final TestSocket ts : cs)
+                ts.getI().set(0);
+        }
+
+        if (finished) {
             System.out.println(provider.getName() + " -> Max: " + max + "ms, Min: " + min + "ms, Avg: " + Math.ceil(tTime / tests) + "ms");
+        }
 
-            for (final TestSocket ts : cs) {
-                ts.getChannel().close();
-            }
+        for (final TestSocket ts : cs) {
+            ts.getChannel().close();
+        }
 
+        return finished;
+    }
+
+    public static void main(String args[]) {
+        try {
+            testDatagramChannelsExternal(Integer.valueOf(args[1]), Integer.valueOf(args[2]));
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
-    }
-
-    public static void main(String args[]) {
-        testDatagramChannelsExternal(Integer.valueOf(args[1]), Integer.valueOf(args[2]));
     }
 }

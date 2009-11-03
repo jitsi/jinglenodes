@@ -1,16 +1,7 @@
 package org.xmpp.jnodes.smack;
 
 import org.jivesoftware.smack.provider.IQProvider;
-import org.jivesoftware.smack.packet.IQ;
 import org.xmlpull.v1.XmlPullParser;
-import org.xmpp.jnodes.RelayChannel;
-
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.IllegalFormatException;
-import java.io.IOException;
 
 public class JingleTrackerProvider implements IQProvider {
 

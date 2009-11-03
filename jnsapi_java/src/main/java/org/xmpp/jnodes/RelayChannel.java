@@ -1,11 +1,14 @@
 package org.xmpp.jnodes;
 
-import org.xmpp.jnodes.nio.*;
+import org.xmpp.jnodes.nio.DatagramListener;
+import org.xmpp.jnodes.nio.ListenerDatagramChannel;
+import org.xmpp.jnodes.nio.LocalIPResolver;
+import org.xmpp.jnodes.nio.SelDatagramChannel;
 
 import java.io.IOException;
+import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.BindException;
 import java.nio.ByteBuffer;
 
 public class RelayChannel {

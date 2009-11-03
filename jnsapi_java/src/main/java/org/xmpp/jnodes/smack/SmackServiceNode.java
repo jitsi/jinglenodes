@@ -7,16 +7,15 @@ import org.jivesoftware.smack.packet.IQ;
 import org.jivesoftware.smack.packet.Packet;
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.provider.ProviderManager;
-import org.jivesoftware.smackx.provider.DiscoverInfoProvider;
 import org.jivesoftware.smackx.ServiceDiscoveryManager;
 import org.xmpp.jnodes.RelayChannel;
 
+import java.io.IOException;
+import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.Iterator;
-import java.io.IOException;
 
 public class SmackServiceNode implements ConnectionListener, PacketListener {
 
@@ -217,7 +216,6 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         final MappedNodes mappedNodes = new MappedNodes();
 
         // Request to Server
-        JingleTrackerIQ result = getServices(xmppConnection, xmppConnection.getHost());
         deepSearch(xmppConnection, maxEntries, xmppConnection.getHost(), mappedNodes, maxDepth - 1);
 
         // Request to Buddies

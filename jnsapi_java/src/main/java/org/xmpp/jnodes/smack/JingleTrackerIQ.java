@@ -2,15 +2,15 @@ package org.xmpp.jnodes.smack;
 
 import org.jivesoftware.smack.packet.IQ;
 
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.Collection;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class JingleTrackerIQ extends IQ {
 
     public static final String NAME = "services";
     public static final String NAMESPACE = "http://jabber.org/protocol/jinglenodes";
 
-    private ConcurrentHashMap<String, TrackerEntry> entries = new ConcurrentHashMap<String, TrackerEntry>();
+    private final ConcurrentHashMap<String, TrackerEntry> entries = new ConcurrentHashMap<String, TrackerEntry>();
 
     public JingleTrackerIQ() {
         this.setType(Type.GET);

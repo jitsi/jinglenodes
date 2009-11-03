@@ -5,6 +5,7 @@ import org.jivesoftware.smack.filter.PacketFilter;
 import org.jivesoftware.smack.filter.PacketIDFilter;
 import org.jivesoftware.smack.packet.IQ;
 import org.jivesoftware.smack.packet.Packet;
+import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.provider.ProviderManager;
 import org.jivesoftware.smackx.provider.DiscoverInfoProvider;
 import org.jivesoftware.smackx.ServiceDiscoveryManager;
@@ -14,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Iterator;
 import java.io.IOException;
 
 public class SmackServiceNode implements ConnectionListener, PacketListener {
@@ -66,6 +68,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
             }
         }
         connection.login(user, password);
+        connection.getRoster().setSubscriptionMode(Roster.SubscriptionMode.accept_all);
         ServiceDiscoveryManager.getInstanceFor(connection).addFeature(JingleChannelIQ.NAMESPACE);
         connection.addPacketListener(this, new PacketFilter() {
             public boolean accept(Packet packet) {
@@ -147,6 +150,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
             final JingleTrackerIQ iq = (JingleTrackerIQ) packet;
             if (iq.isRequest()) {
                 final JingleTrackerIQ result = createKnownNodes();
+                result.setPacketID(packet.getPacketID());
                 result.setFrom(packet.getTo());
                 result.setTo(packet.getFrom());
                 connection.sendPacket(result);
@@ -189,6 +193,59 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         return result;
     }
 
+    private static void deepSearch(final XMPPConnection xmppConnection, final int maxEntries, final String startPoint, final MappedNodes mappedNodes, final int maxDepth) {
+        if (xmppConnection == null || !xmppConnection.isConnected()) return;
+        if (mappedNodes.getRelayEntries().size() > maxEntries || maxDepth <= 0) return;
+
+        JingleTrackerIQ result = getServices(xmppConnection, startPoint);
+        if (result != null && result.getType().equals(IQ.Type.RESULT)) {
+            for (final TrackerEntry entry : result.getEntries()) {
+                if (entry.getType().equals(TrackerEntry.Type.tracker)) {
+                    mappedNodes.getTrackerEntries().put(entry.getJid(), entry);
+                    deepSearch(xmppConnection, maxEntries, entry.getJid(), mappedNodes, maxDepth - 1);
+                } else if (entry.getType().equals(TrackerEntry.Type.relay)) {
+                    mappedNodes.getRelayEntries().put(entry.getJid(), entry);
+                }
+            }
+        }
+
+    }
+
+    public static MappedNodes searchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth) {
+        if (xmppConnection == null || !xmppConnection.isConnected()) return null;
+
+        final MappedNodes mappedNodes = new MappedNodes();
+
+        // Request to Server
+        JingleTrackerIQ result = getServices(xmppConnection, xmppConnection.getHost());
+        deepSearch(xmppConnection, maxEntries, xmppConnection.getHost(), mappedNodes, maxDepth - 1);
+
+        // Request to Buddies
+        for (final RosterEntry re : xmppConnection.getRoster().getEntries()) {
+            for (final Iterator<Presence> i = xmppConnection.getRoster().getPresences(re.getUser()); i.hasNext();) {
+                final Presence presence = i.next();
+                if (presence.isAvailable()) {
+                    deepSearch(xmppConnection, maxEntries, presence.getFrom(), mappedNodes, maxDepth - 1);
+                }
+            }
+        }
+
+        return mappedNodes;
+    }
+
+    public static class MappedNodes {
+        final ConcurrentHashMap<String, TrackerEntry> relayEntries = new ConcurrentHashMap<String, TrackerEntry>();
+        final ConcurrentHashMap<String, TrackerEntry> trackerEntries = new ConcurrentHashMap<String, TrackerEntry>();
+
+        public ConcurrentHashMap<String, TrackerEntry> getRelayEntries() {
+            return relayEntries;
+        }
+
+        public ConcurrentHashMap<String, TrackerEntry> getTrackerEntries() {
+            return trackerEntries;
+        }
+    }
+
     ConcurrentHashMap<String, RelayChannel> getChannels() {
         return channels;
     }
@@ -199,7 +256,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         iq.setType(IQ.Type.RESULT);
 
         for (final TrackerEntry entry : trackerEntries.values()) {
-            if (!entry.getPolicy().equals(TrackerEntry.Policy._public)) {
+            if (!entry.getPolicy().equals(TrackerEntry.Policy._roster)) {
                 iq.addEntry(entry);
             }
         }

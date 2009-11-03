@@ -3,6 +3,7 @@ package org.xmpp.jnodes.smack;
 import org.jivesoftware.smack.packet.IQ;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Collection;
 
 public class JingleTrackerIQ extends IQ {
 
@@ -47,4 +48,7 @@ public class JingleTrackerIQ extends IQ {
         return str.toString();
     }
 
+    public Collection<TrackerEntry> getEntries() {
+        return entries.values();
+    }
 }

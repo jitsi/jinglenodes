@@ -21,13 +21,11 @@ public class JingleTrackerProvider implements IQProvider {
         boolean done = false;
         int eventType;
         String elementName;
-        String namespace;
 
         while (!done) {
 
             eventType = parser.getEventType();
             elementName = parser.getName();
-            namespace = parser.getNamespace();
 
             if (eventType == XmlPullParser.START_TAG) {
                 final TrackerEntry.Type type;

@@ -5,7 +5,7 @@ import org.jivesoftware.smack.packet.IQ;
 public class JingleChannelIQ extends IQ {
 
     public static final String NAME = "candidate";
-    public static final String NAMESPACE = "http://jabber.org/protocol/jinglenodes";
+    public static final String NAMESPACE = "http://jabber.org/protocol/jinglenodes#channel";
 
     private Protocol protocol = Protocol.udp;
     private String host;

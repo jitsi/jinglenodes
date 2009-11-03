@@ -198,7 +198,7 @@ public class RelayChannelTest extends TestCase {
     public static boolean socketTest(final TestSocket.ChannelProvider provider, final SocketAddress sa, final SocketAddress sb) throws IOException, InterruptedException {
         final int num = 2;
         int packets = 30;
-        int tests = 1000;
+        int tests = 500;
         final List<TestSocket> cs = new ArrayList<TestSocket>();
 
         for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {

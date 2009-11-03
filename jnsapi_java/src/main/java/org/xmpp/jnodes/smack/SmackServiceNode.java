@@ -20,11 +20,14 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
 
     private final XMPPConnection connection;
     private final ConcurrentHashMap<String, RelayChannel> channels = new ConcurrentHashMap<String, RelayChannel>();
+    private final ConcurrentHashMap<String, TrackerEntry> trackerEntries = new ConcurrentHashMap<String, TrackerEntry>();
+
     private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
     private final AtomicInteger ids = new AtomicInteger(0);
 
     static {
         ProviderManager.getInstance().addIQProvider(JingleChannelIQ.NAME, JingleChannelIQ.NAMESPACE, new JingleNodesProvider());
+        ProviderManager.getInstance().addIQProvider(JingleTrackerIQ.NAME, JingleTrackerIQ.NAMESPACE, new JingleTrackerProvider());
     }
 
     public SmackServiceNode(final String server, final int port, final long timeout) {
@@ -38,7 +41,6 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
                     if (da > timeout || db > timeout) {
                         removeChannel(c);
                     }
-
                 }
             }
         }, timeout, timeout, TimeUnit.MILLISECONDS);
@@ -67,7 +69,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         ServiceDiscoveryManager.getInstanceFor(connection).addFeature(JingleChannelIQ.NAMESPACE);
         connection.addPacketListener(this, new PacketFilter() {
             public boolean accept(Packet packet) {
-                return packet instanceof JingleChannelIQ;
+                return packet instanceof JingleChannelIQ || packet instanceof JingleTrackerIQ;
             }
         });
     }
@@ -84,8 +86,8 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
     }
 
     private void removeChannel(final RelayChannel c) {
-        c.close();
         channels.remove(c.getAttachment());
+        c.close();
     }
 
     public void connectionClosedOnError(Exception e) {
@@ -141,6 +143,14 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
             if (request.isRequest()) {
                 connection.sendPacket(createUdpChannel(request));
             }
+        } else if (packet instanceof JingleTrackerIQ) {
+            final JingleTrackerIQ iq = (JingleTrackerIQ) packet;
+            if (iq.isRequest()) {
+                final JingleTrackerIQ result = createKnownNodes();
+                result.setFrom(packet.getTo());
+                result.setTo(packet.getFrom());
+                connection.sendPacket(result);
+            }
         }
 
     }
@@ -164,7 +174,40 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         return result;
     }
 
+    public static JingleTrackerIQ getServices(final XMPPConnection xmppConnection, final String serviceNode) {
+        if (xmppConnection == null || !xmppConnection.isConnected()) return null;
+
+        final JingleTrackerIQ iq = new JingleTrackerIQ();
+        iq.setFrom(xmppConnection.getUser());
+        iq.setTo(serviceNode);
+
+        PacketCollector collector = xmppConnection.createPacketCollector(new PacketIDFilter(iq.getPacketID()));
+        xmppConnection.sendPacket(iq);
+        JingleTrackerIQ result = (JingleTrackerIQ) collector.nextResult(Math.round(SmackConfiguration.getPacketReplyTimeout() * 1.5));
+        collector.cancel();
+
+        return result;
+    }
+
     ConcurrentHashMap<String, RelayChannel> getChannels() {
         return channels;
+    }
+
+    public JingleTrackerIQ createKnownNodes() {
+
+        final JingleTrackerIQ iq = new JingleTrackerIQ();
+        iq.setType(IQ.Type.RESULT);
+
+        for (final TrackerEntry entry : trackerEntries.values()) {
+            if (!entry.getPolicy().equals(TrackerEntry.Policy._public)) {
+                iq.addEntry(entry);
+            }
+        }
+
+        return iq;
+    }
+
+    public void addTrackerEntry(final TrackerEntry entry) {
+        trackerEntries.put(entry.getJid(), entry);
     }
 }

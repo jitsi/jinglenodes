@@ -3,6 +3,7 @@ package org.xmpp.jnodes.smack;
 import junit.framework.TestCase;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.XMPPConnection;
+import org.jivesoftware.smack.Roster;
 import org.junit.Ignore;
 import org.xmpp.jnodes.RelayChannelTest;
 
@@ -32,9 +33,9 @@ public class SmackServiceNodeTest extends TestCase {
 
         final SmackServiceNode ssn3 = new SmackServiceNode(server, port, timeout);
 
-        ssn3.connect(user3, pass3, true);
-        ssn2.connect(user2, pass2, true);
-        ssn1.connect(user1, pass1, true);
+        ssn3.connect(user3, pass3, true, Roster.SubscriptionMode.accept_all);
+        ssn2.connect(user2, pass2, true, Roster.SubscriptionMode.accept_all);
+        ssn1.connect(user1, pass1, true, Roster.SubscriptionMode.accept_all);
 
         Thread.sleep(250);
 
@@ -100,7 +101,7 @@ public class SmackServiceNodeTest extends TestCase {
 
         assertEquals(iq.getEntries().size(), pub + unk);
 
-        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssn2.getConnection(), 10, 10);
+        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssn2.getConnection(), 10, 10, null);
 
         Thread.sleep(500);
 
@@ -139,7 +140,7 @@ public class SmackServiceNodeTest extends TestCase {
 
         for (int i = 0; i < users; i++) {
             final SmackServiceNode ssn = new SmackServiceNode(server, port, timeout);
-            ssn.connect(pre + i, pre + i, true);
+            ssn.connect(pre + i, pre + i, true, Roster.SubscriptionMode.accept_all);
             ssns.add(ssn);
         }
 
@@ -153,7 +154,7 @@ public class SmackServiceNodeTest extends TestCase {
 
         Thread.sleep(200);
 
-        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssns.get(0).getConnection(), users, users);
+        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssns.get(0).getConnection(), users, users, null);
         Thread.sleep(200);
 
         assertEquals(ma.getRelayEntries().size(), users - 1);

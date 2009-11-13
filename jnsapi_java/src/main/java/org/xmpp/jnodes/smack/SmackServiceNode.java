@@ -40,8 +40,8 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
 
     public SmackServiceNode(final String server, final int port, final long timeout) {
         final ConnectionConfiguration conf = new ConnectionConfiguration(server, port);
-        conf.setSASLAuthenticationEnabled(false);
-        conf.setSecurityMode(ConnectionConfiguration.SecurityMode.disabled);
+        conf.setSASLAuthenticationEnabled(true);
+        conf.setSecurityMode(ConnectionConfiguration.SecurityMode.enabled);
         connection = new XMPPConnection(conf);
         this.timeout = timeout;
     }
@@ -287,5 +287,14 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
 
     public void addTrackerEntry(final TrackerEntry entry) {
         trackerEntries.put(entry.getJid(), entry);
+    }
+
+    public void addEntries(final MappedNodes entries) {
+        for (final TrackerEntry t : entries.getRelayEntries().values()) {
+            addTrackerEntry(t);
+        }
+        for (final TrackerEntry t : entries.getTrackerEntries().values()) {
+            addTrackerEntry(t);
+        }
     }
 }

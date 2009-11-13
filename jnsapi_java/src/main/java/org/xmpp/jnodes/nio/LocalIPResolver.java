@@ -8,7 +8,13 @@ import java.util.Enumeration;
 
 public class LocalIPResolver {
 
+    private static String overrideIp;
+
     public static String getLocalIP() {
+
+        if (overrideIp != null && overrideIp.length() >= 7) {
+            return overrideIp;
+        }
 
         Enumeration ifaces;
 
@@ -54,5 +60,13 @@ public class LocalIPResolver {
         }
 
         return "127.0.0.1";
+    }
+
+    public static String getOverrideIp() {
+        return overrideIp;
+    }
+
+    public static void setOverrideIp(String overrideIp) {
+        LocalIPResolver.overrideIp = overrideIp;
     }
 }

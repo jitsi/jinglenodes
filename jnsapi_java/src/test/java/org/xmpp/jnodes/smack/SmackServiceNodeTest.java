@@ -4,8 +4,10 @@ import junit.framework.TestCase;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.Roster;
+import org.jivesoftware.smack.packet.Presence;
 import org.junit.Ignore;
 import org.xmpp.jnodes.RelayChannelTest;
+import org.xmpp.jnodes.nio.LocalIPResolver;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,6 +18,8 @@ public class SmackServiceNodeTest extends TestCase {
 
     @Ignore("Meant to be ran manually")
     public void testConnect() throws InterruptedException, XMPPException, IOException {
+
+        LocalIPResolver.setOverrideIp("127.0.0.1");
 
         final String server = "localhost";
         final int port = 5222;
@@ -37,9 +41,13 @@ public class SmackServiceNodeTest extends TestCase {
         ssn2.connect(user2, pass2, true, Roster.SubscriptionMode.accept_all);
         ssn1.connect(user1, pass1, true, Roster.SubscriptionMode.accept_all);
 
+        ssn3.getConnection().sendPacket(new Presence(Presence.Type.available));
+        ssn2.getConnection().sendPacket(new Presence(Presence.Type.available));
+        ssn1.getConnection().sendPacket(new Presence(Presence.Type.available));
+
         Thread.sleep(250);
 
-        for (int j = 0; j < 2; j++) {
+        for (int j = 0; j < 1; j++) {
             JingleChannelIQ iq = SmackServiceNode.getChannel(ssn1.getConnection(), ssn2.getConnection().getUser());
 
             assertTrue(iq != null);
@@ -78,34 +86,35 @@ public class SmackServiceNodeTest extends TestCase {
         final int unk = 3;
         final int ros = 2;
 
-        ssn1.getConnection().getRoster().createEntry(ssn2.getConnection().getUser(), "test", new String[]{});
-        ssn2.getConnection().getRoster().createEntry(ssn3.getConnection().getUser(), "test", new String[]{});
-        ssn3.getConnection().getRoster().createEntry(ssn1.getConnection().getUser(), "test", new String[]{});
+        ssn1.getConnection().getRoster().createEntry(ssn2.getConnection().getUser().split("/")[0], "test", new String[]{});
+        ssn2.getConnection().getRoster().createEntry(ssn3.getConnection().getUser().split("/")[0], "test", new String[]{});
+        ssn3.getConnection().getRoster().createEntry(ssn1.getConnection().getUser().split("/")[0], "test", new String[]{});
 
         Thread.sleep(500);
 
         for (int i = 0; i < pub; i++) {
-            ssn1.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "p" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
+            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "p" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
         }
         for (int i = 0; i < unk; i++) {
-            ssn1.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._unknown, "u" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
+            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._unknown, "u" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
         }
         for (int i = 0; i < ros; i++) {
-            ssn1.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._roster, "r" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
+            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._roster, "r" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
         }
 
         Thread.sleep(200);
-        JingleTrackerIQ iq = SmackServiceNode.getServices(ssn2.getConnection(), ssn1.getConnection().getUser());
-
-        Thread.sleep(500);
-
-        assertEquals(iq.getEntries().size(), pub + unk);
-
-        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssn2.getConnection(), 10, 10, null);
+        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssn2.getConnection(), 10, 10, JingleChannelIQ.Protocol.udp);
+        ssn2.addEntries(ma);
 
         Thread.sleep(500);
 
         assertEquals(ma.getRelayEntries().size(), pub + unk);
+
+        SmackServiceNode.MappedNodes mb = SmackServiceNode.searchServices(ssn1.getConnection(), 10, 10, JingleChannelIQ.Protocol.udp);
+
+        Thread.sleep(500);
+
+        assertEquals(mb.getRelayEntries().size(), pub + unk);
 
         ssn1.getConnection().disconnect();
         ssn2.getConnection().disconnect();

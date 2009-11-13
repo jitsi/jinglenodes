@@ -18,13 +18,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class RelayChannelTest extends TestCase {
 
     final static String encode = "UTF-8";
-    final static String localIP = LocalIPResolver.getLocalIP();
+    final static String localIP = "127.0.0.1";
     private final static ExecutorService executorService = Executors.newCachedThreadPool();
 
     public void testDatagramChannels() {
         final List<Future> futures = new ArrayList<Future>();
 
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 1; i++) {
             final int ii = i;
             futures.add(executorService.submit(new Runnable() {
                 public void run() {
@@ -80,14 +80,14 @@ public class RelayChannelTest extends TestCase {
     public void socketTest(final TestSocket.ChannelProvider provider, final int socketRange, final int relayRange) {
         try {
 
-            final int num = 10;
-            final int packets = 15;
-            final int tests = 50;
+            final int num = 2;
+            final int packets = 10;
+            final int tests = 1;
             final List<TestSocket> cs = new ArrayList<TestSocket>();
             final List<RelayChannel> rc = new ArrayList<RelayChannel>();
 
             for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
-                for (int t = 0; t < 50; t++) {
+                for (int t = 0; t < num; t++) {
                     try {
                         final TestSocket s = new TestSocket(localIP, socketRange + j, provider);
                         cs.add(s);
@@ -97,7 +97,7 @@ public class RelayChannelTest extends TestCase {
                     }
                 }
                 if (i % 2 == 0) {
-                    for (int t = 0; t < 50; t++) {
+                    for (int t = 0; t < num; t++) {
                         try {
                             final RelayChannel c = new RelayChannel(localIP, relayRange + l, relayRange + l + 1);
                             rc.add(c);
@@ -134,8 +134,11 @@ public class RelayChannelTest extends TestCase {
                                     int ss = 0;
                                     while (ss == 0) {
                                         ss = a.getChannel().send(b.getExpectedBuffer().duplicate(), d);
-                                        if (ss == 0) System.out.println("Retrying Send...");
-                                        else sent.incrementAndGet();
+                                        if (ss == 0) {
+                                            System.out.println("Retrying Send...");
+                                        } else {
+                                            sent.incrementAndGet();
+                                        }
                                     }
                                 } catch (IOException e) {
                                     e.printStackTrace();
@@ -163,15 +166,22 @@ public class RelayChannelTest extends TestCase {
                     int a = 0;
                     int b = 0;
                     for (final TestSocket s : cs) {
-                        if (s.getI().get() >= packets) b++;
-                        else if (s.getI().get() >= target) a++;
+                        if (s.getI().get() >= packets) {
+                            b++;
+                        } else if (s.getI().get() >= target) {
+                            a++;
+                        }
                     }
                     finished = a + b == num;
                 }
 
                 final long d = (System.currentTimeMillis() - start);
-                if (d > max) max = d;
-                if (d < min) min = d;
+                if (d > max) {
+                    max = d;
+                }
+                if (d < min) {
+                    min = d;
+                }
                 tTime += d;
 
                 for (final TestSocket ts : cs)
@@ -197,14 +207,14 @@ public class RelayChannelTest extends TestCase {
 
     public static boolean socketTest(final TestSocket.ChannelProvider provider, final SocketAddress sa, final SocketAddress sb) throws IOException, InterruptedException {
         final int num = 2;
-        int packets = 30;
-        int tests = 500;
+        int packets = 25;
+        int tests = 100;
         final List<TestSocket> cs = new ArrayList<TestSocket>();
 
         for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
             for (int t = 0; t < 50; t++) {
                 try {
-                    final TestSocket s = new TestSocket(localIP, 50000 + j, provider);
+                    final TestSocket s = new TestSocket(localIP, 20000 + j, provider);
                     cs.add(s);
                     break;
                 } catch (BindException e) {
@@ -246,8 +256,12 @@ public class RelayChannelTest extends TestCase {
 
             if (finished) {
                 final long d = (System.currentTimeMillis() - start);
-                if (d > max) max = d;
-                if (d < min) min = d;
+                if (d > max) {
+                    max = d;
+                }
+                if (d < min) {
+                    min = d;
+                }
                 tTime += d;
             }
 

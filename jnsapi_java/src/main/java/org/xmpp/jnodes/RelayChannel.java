@@ -29,12 +29,13 @@ public class RelayChannel {
     public static RelayChannel createLocalRelayChannel() throws IOException {
 
         final String ip = LocalIPResolver.getLocalIP();
-        int range = 40000;
+        int range = 50000;
         IOException be = null;
 
         for (int t = 0; t < 50; t++) {
             try {
                 int a = Math.round((int) (Math.random() * 10000)) + range;
+                a = a % 2 == 0 ? a : a + 1;
                 return new RelayChannel(ip, a, a + 1);
             } catch (BindException e) {
                 be = e;

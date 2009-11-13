@@ -12,7 +12,6 @@ public class TrackerEntry {
         public String toString() {
             return this.name().substring(1);
         }
-
     }
 
     private Type type;

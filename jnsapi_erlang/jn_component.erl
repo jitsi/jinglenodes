@@ -6,6 +6,9 @@
 -export([start/5, stop/1]).
 -export([init/5]).
 
+channelNamespace() -> "http://jabber.org/protocol/jinglenodes#channel".
+channelName() -> "candidate".
+
 start(JID, Pass, Server, Port, PubIP) ->
     spawn(?MODULE, init, [JID, Pass, Server, Port, PubIP]).
 
@@ -50,7 +53,7 @@ process_iq(XmppCom, Packet, PubIP) ->
 	end. 
 
 get_candidate_elem(Host, A, B) ->
-	Raw_Elem = exmpp_xml:element("http://jabber.org/protocol/jinglenodes#channel","candidate"),
+	Raw_Elem = exmpp_xml:element(channelNamespace(),channelName()),
         Elem_A = exmpp_xml:set_attribute(Raw_Elem, "porta", A),
         Elem_B = exmpp_xml:set_attribute(Elem_A, "portb", B),
 	exmpp_xml:set_attribute(Elem_B,"host", Host).

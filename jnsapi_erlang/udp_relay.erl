@@ -32,10 +32,10 @@
 %% API
 %%====================================================================
 start_link(P1, P2) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [P1, P2], []).
+    gen_server:start_link(?MODULE, [P1, P2], []).
 
 start(P1, P2) ->
-    gen_server:start({local, ?MODULE}, ?MODULE, [P1, P2], []).
+    gen_server:start(?MODULE, [P1, P2], []).
 
 %%====================================================================
 %% gen_server callbacks

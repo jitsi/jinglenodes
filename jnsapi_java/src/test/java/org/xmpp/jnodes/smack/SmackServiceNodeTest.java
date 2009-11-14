@@ -5,6 +5,7 @@ import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.Roster;
 import org.jivesoftware.smack.packet.Presence;
+import org.jivesoftware.smack.packet.IQ;
 import org.junit.Ignore;
 import org.xmpp.jnodes.RelayChannelTest;
 import org.xmpp.jnodes.nio.LocalIPResolver;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class SmackServiceNodeTest extends TestCase {
+
 
     @Ignore("Meant to be ran manually")
     public void testConnect() throws InterruptedException, XMPPException, IOException {
@@ -40,6 +42,10 @@ public class SmackServiceNodeTest extends TestCase {
         ssn3.connect(user3, pass3, true, Roster.SubscriptionMode.accept_all);
         ssn2.connect(user2, pass2, true, Roster.SubscriptionMode.accept_all);
         ssn1.connect(user1, pass1, true, Roster.SubscriptionMode.accept_all);
+
+        ssn1.getConnection().getRoster().createEntry(ssn2.getConnection().getUser().split("/")[0], "test", new String[]{});
+        ssn2.getConnection().getRoster().createEntry(ssn3.getConnection().getUser().split("/")[0], "test", new String[]{});
+        ssn3.getConnection().getRoster().createEntry(ssn1.getConnection().getUser().split("/")[0], "test", new String[]{});
 
         ssn3.getConnection().sendPacket(new Presence(Presence.Type.available));
         ssn2.getConnection().sendPacket(new Presence(Presence.Type.available));
@@ -85,10 +91,6 @@ public class SmackServiceNodeTest extends TestCase {
         final int pub = 5;
         final int unk = 3;
         final int ros = 2;
-
-        ssn1.getConnection().getRoster().createEntry(ssn2.getConnection().getUser().split("/")[0], "test", new String[]{});
-        ssn2.getConnection().getRoster().createEntry(ssn3.getConnection().getUser().split("/")[0], "test", new String[]{});
-        ssn3.getConnection().getRoster().createEntry(ssn1.getConnection().getUser().split("/")[0], "test", new String[]{});
 
         Thread.sleep(500);
 
@@ -139,18 +141,21 @@ public class SmackServiceNodeTest extends TestCase {
     @Ignore("Meant to be ran manually")
     public void testDeepSearch() throws InterruptedException, XMPPException, IOException {
 
+        LocalIPResolver.setOverrideIp("127.0.0.1");
+
         final String server = "localhost";
         final int port = 5222;
-        final int timeout = 5000;
-        final String pre = "ds";
-        final int users = 10;
+        final int timeout = 6000;
+        final String pre = "user";
+        final int users = 7;
 
         final List<SmackServiceNode> ssns = new ArrayList<SmackServiceNode>();
 
-        for (int i = 0; i < users; i++) {
+        for (int i = 1; i <= users; i++) {
             final SmackServiceNode ssn = new SmackServiceNode(server, port, timeout);
             ssn.connect(pre + i, pre + i, true, Roster.SubscriptionMode.accept_all);
             ssns.add(ssn);
+            System.out.println("Connected " + pre + i);
         }
 
         Thread.sleep(250);
@@ -174,7 +179,10 @@ public class SmackServiceNodeTest extends TestCase {
 
             assertTrue(iq != null);
 
+            assertEquals(IQ.Type.RESULT, iq.getType());
+
             assertTrue(RelayChannelTest.testDatagramChannelsExternal(iq.getPorta(), iq.getPortb()));
+            Thread.sleep(500);
         }
 
         for (final SmackServiceNode sn : ssns) {

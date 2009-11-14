@@ -28,15 +28,21 @@ public class RelayChannelTest extends TestCase {
             final int ii = i;
             futures.add(executorService.submit(new Runnable() {
                 public void run() {
-                    socketTest(new TestSocket.ChannelProvider() {
-                        public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
-                            return SelDatagramChannel.open(datagramListener, address);
-                        }
+                    try {
+                        socketTest(new TestSocket.ChannelProvider() {
+                            public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
+                                return SelDatagramChannel.open(datagramListener, address);
+                            }
 
-                        public String getName() {
-                            return "SelDatagramChannel";
-                        }
-                    }, 1500 * ii + 10000, 1500 * ii + 11000);
+                            public String getName() {
+                                return "SelDatagramChannel";
+                            }
+                        }, 1500 * ii + 10000, 1500 * ii + 11000);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();  
+                    }
                 }
             }));
         }
@@ -77,9 +83,7 @@ public class RelayChannelTest extends TestCase {
         return f;
     }
 
-    public void socketTest(final TestSocket.ChannelProvider provider, final int socketRange, final int relayRange) {
-        try {
-
+    public void socketTest(final TestSocket.ChannelProvider provider, final int socketRange, final int relayRange) throws IOException, InterruptedException {
             final int num = 2;
             final int packets = 10;
             final int tests = 1;
@@ -196,12 +200,6 @@ public class RelayChannelTest extends TestCase {
             for (final RelayChannel r : rc) {
                 r.close();
             }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
     }
 

@@ -56,6 +56,11 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         if (tryCreateAccount) {
             try {
                 connection.getAccountManager().createAccount(user, password);
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException e) {
+                    // Do Nothing
+                }
             } catch (final XMPPException e) {
                 // Do Nothing as account may exists
             }

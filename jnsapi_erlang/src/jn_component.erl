@@ -1,0 +1,80 @@
+-module(jn_component).
+
+-define(NS_CHANNEL,'http://jabber.org/protocol/jinglenodes#channel').
+-define(NAME_CHANNEL,'candidate').
+
+-include_lib("exmpp/include/exmpp.hrl").
+-include_lib("exmpp/include/exmpp_client.hrl").
+
+-export([start/5, stop/1]).
+-export([init/5]).
+
+start(JID, Pass, Server, Port, PubIP) ->
+    spawn(?MODULE, init, [JID, Pass, Server, Port, PubIP]).
+
+stop(JNComPid) ->
+    JNComPid ! stop.
+
+init(JID, Pass, Server, Port, PubIP) ->
+    application:start(exmpp),
+    XmppCom = exmpp_component:start(),
+    exmpp_component:auth(XmppCom, JID, Pass),
+    _StreamId = exmpp_component:connect(XmppCom, Server, Port),
+    exmpp_component:handshake(XmppCom),
+    loop(XmppCom, JID, PubIP).
+
+loop(XmppCom, JID, PubIP) ->
+    receive
+        stop ->
+            exmpp_component:stop(XmppCom);
+        %% If we receive a message, we reply with the same message
+        Record = #received_packet{packet_type=message, raw_packet=Packet} ->
+            io:format("~p~n", [Record]),
+            process_message(XmppCom, Packet, JID),
+            loop(XmppCom, JID, PubIP);
+	Record = #received_packet{packet_type=iq, raw_packet=IQ} ->
+	    io:format("~p~n", [Record]),
+	    process_iq(XmppCom, IQ, PubIP,exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ))),
+	    loop(XmppCom, JID, PubIP);
+	Record ->
+            io:format("~p~n", [Record]),
+            loop(XmppCom, JID, PubIP)
+    end.
+
+%% Create Channel and return details
+process_iq(XmppCom, IQ, PubIP, ?NS_CHANNEL) ->
+    case allocate_relay() of
+	{A, B} ->
+		Result = exmpp_iq:result(IQ,get_candidate_elem(PubIP, A, B)),
+		exmpp_component:send_packet(XmppCom, Result);
+	_ ->
+		Error = exmpp_iq:error(IQ),
+		exmpp_component:send_packet(XmppCom, Error)
+	end; 
+process_iq(XmppCom, IQ, _, _) ->
+		    Error = exmpp_iq:error(IQ),
+		    exmpp_component:send_packet(XmppCom, Error).
+
+get_candidate_elem(Host, A, B) ->
+	Raw_Elem = exmpp_xml:element(?NS_CHANNEL,?NAME_CHANNEL),
+        Elem_A = exmpp_xml:set_attribute(Raw_Elem, "porta", A),
+        Elem_B = exmpp_xml:set_attribute(Elem_A, "portb", B),
+	exmpp_xml:set_attribute(Elem_B,"host", Host).
+
+%% Reply Stats
+process_message(XmppCom, Packet, JID) ->
+    From = exmpp_xml:get_attribute(Packet, from, <<"unknown">>),
+    To = exmpp_xml:get_attribute(Packet, to, JID),
+    Tmp = exmpp_xml:set_attribute(Packet, from, To),
+    Tmp2 = exmpp_xml:set_attribute(Tmp, to, From),
+    NewPacket = exmpp_xml:remove_attribute(Tmp2, id),
+    exmpp_component:send_packet(XmppCom, NewPacket).
+
+allocate_relay() -> allocate_relay(10000,10).
+allocate_relay(_, 0) -> {error};
+allocate_relay(I, Tries) ->
+     case udp_relay:start(I,I+2) of
+	{ok, _} -> {I,I+2};
+	_ -> allocate_relay(I+3,Tries-1)
+     end.
+

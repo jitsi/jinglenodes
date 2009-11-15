@@ -2,6 +2,7 @@
 
 -define(NS_CHANNEL,'http://jabber.org/protocol/jinglenodes#channel').
 -define(NAME_CHANNEL,'candidate').
+-define(NS_JINGLE_NODES_s,"http://jabber.org/protocol/jinglenodes").
 
 -include_lib("exmpp/include/exmpp.hrl").
 -include_lib("exmpp/include/exmpp_client.hrl").
@@ -10,10 +11,14 @@
 -export([init/5]).
 
 start(JID, Pass, Server, Port, PubIP) ->
-    spawn(?MODULE, init, [JID, Pass, Server, Port, PubIP]).
+	   spawn(?MODULE, init, [JID, Pass, Server, Port, PubIP]).
 
 stop(JNComPid) ->
     JNComPid ! stop.
+
+init(JID, Pass, Server, [_|_]=Port, PubIP) ->
+	  {ok, [NPort], _} = io_lib:fread("~u",Port),
+	  init(JID, Pass, Server, NPort, PubIP);
 
 init(JID, Pass, Server, Port, PubIP) ->
     application:start(exmpp),
@@ -51,6 +56,17 @@ process_iq(XmppCom, IQ, PubIP, ?NS_CHANNEL) ->
 		Error = exmpp_iq:error(IQ),
 		exmpp_component:send_packet(XmppCom, Error)
 	end; 
+
+process_iq(Session, "get", ?NS_DISCO_INFO, IQ) ->
+	Identity = exmpp_xml:element(?NS_DISCO_INFO, 'identity', [exmpp_xml:attribute("category", <<"component">>),
+				  		      exmpp_xml:attribute("type", <<"services">>),
+						      exmpp_xml:attribute("name", <<"r">>)
+						      ],
+			 	     []),
+	IQRegisterFeature = exmpp_xml:element(?NS_DISCO_INFO, 'feature', [exmpp_xml:attribute('var', ?NS_JINGLE_NODES_s)],[]),
+	Result = exmpp_iq:result(IQ, exmpp_xml:element(?NS_DISCO_INFO, 'query', [], [Identity, IQRegisterFeature])),
+	exmpp_component:send_packet(Session, Result);
+
 process_iq(XmppCom, IQ, _, _) ->
 		    Error = exmpp_iq:error(IQ),
 		    exmpp_component:send_packet(XmppCom, Error).

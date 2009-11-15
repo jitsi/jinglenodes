@@ -3,6 +3,7 @@
 -define(NS_CHANNEL,'http://jabber.org/protocol/jinglenodes#channel').
 -define(NAME_CHANNEL,'candidate').
 -define(NS_JINGLE_NODES_s,"http://jabber.org/protocol/jinglenodes").
+-define(NS_CHANNEL_s,"http://jabber.org/protocol/jinglenodes#channel").
 
 -include_lib("exmpp/include/exmpp.hrl").
 -include_lib("exmpp/include/exmpp_client.hrl").
@@ -58,13 +59,14 @@ process_iq(XmppCom, IQ, PubIP, ?NS_CHANNEL) ->
 	end; 
 
 process_iq(Session, "get", ?NS_DISCO_INFO, IQ) ->
-	Identity = exmpp_xml:element(?NS_DISCO_INFO, 'identity', [exmpp_xml:attribute("category", <<"component">>),
-				  		      exmpp_xml:attribute("type", <<"services">>),
-						      exmpp_xml:attribute("name", <<"r">>)
+	Identity = exmpp_xml:element(?NS_DISCO_INFO, 'identity', [exmpp_xml:attribute("category", <<"proxy">>),
+				  		      exmpp_xml:attribute("type", <<"relay">>),
+						      exmpp_xml:attribute("name", <<"Jingle Nodes Relay">>)
 						      ],
 			 	     []),
-	IQRegisterFeature = exmpp_xml:element(?NS_DISCO_INFO, 'feature', [exmpp_xml:attribute('var', ?NS_JINGLE_NODES_s)],[]),
-	Result = exmpp_iq:result(IQ, exmpp_xml:element(?NS_DISCO_INFO, 'query', [], [Identity, IQRegisterFeature])),
+	IQRegisterFeature1 = exmpp_xml:element(?NS_DISCO_INFO, 'feature', [exmpp_xml:attribute('var', ?NS_JINGLE_NODES_s)],[]),
+	IQRegisterFeature2 = exmpp_xml:element(?NS_DISCO_INFO, 'feature', [exmpp_xml:attribute('var', ?NS_CHANNEL_s)],[]),
+	Result = exmpp_iq:result(IQ, exmpp_xml:element(?NS_DISCO_INFO, 'query', [], [Identity, IQRegisterFeature1, IQRegisterFeature2])),
 	exmpp_component:send_packet(Session, Result);
 
 process_iq(XmppCom, IQ, _, _) ->

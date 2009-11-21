@@ -105,3 +105,26 @@ allocate_relay(I, Tries) ->
 	_ -> allocate_relay(I+3,Tries-1)
      end.
 
+check_relay(Relay, Timeout) ->
+	ok.
+
+check_relays(Relays, Timeout) ->
+	check_relays(Relays, Timeout, []).
+
+check_relays([], _, Remain) -> Remain;
+check_relays([A|B], Timeout, Remain) ->
+	case check_relay(A, Timeout) of
+	ok -> check_relays(B, Timeout, [A|Remain]);
+	_ -> check_relays(B, Timeout, Remain)
+	end.
+
+scheduleChannelPurge(Period, Message, Timeout) -> spawn(fun () -> schedule(Period, Message, Timeout) end).
+
+schedule(Period, Message, Timeout) ->
+    receive
+        NewMessage when is_list(NewMessage)  -> schedule(Period, NewMessage, Timeout)
+    after Period ->
+        io:format("~p~n", [Message]),
+	Remain = check_relays(Message, Timeout),
+        schedule(Period, Remain, Timeout)
+    end.

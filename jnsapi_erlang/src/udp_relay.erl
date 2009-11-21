@@ -24,7 +24,7 @@
 	error_logger:info_msg("(~p:~p:~p) " ++ Format ++ "~n",
 			       [self(), ?MODULE, ?LINE | Args])).
 
--record(state, {sock1, sock2, last_recv1, last_recv2}).
+-record(state, {sock1, sock2, last_recv1, last_recv2, lastTimestamp}).
 
 -define(SOCKOPTS, [binary, {active, once}]).
 
@@ -66,7 +66,8 @@ handle_info({udp, Sock, SrcIP, SrcPort, Data},
 	_ ->
 	    ok
     end,
-    {noreply, State#state{last_recv1 = {SrcIP, SrcPort}}};
+    {noreply, State#state{last_recv1 = {SrcIP, SrcPort}, lastTimestamp= now()}};
+
 handle_info({udp, Sock, SrcIP, SrcPort, Data},
 	    #state{sock2 = Sock} = State) ->
     inet:setopts(Sock, [{active, once}]),
@@ -76,7 +77,7 @@ handle_info({udp, Sock, SrcIP, SrcPort, Data},
 	_ ->
 	    ok
     end,
-    {noreply, State#state{last_recv2 = {SrcIP, SrcPort}}};
+    {noreply, State#state{last_recv2 = {SrcIP, SrcPort}, lastTimestamp= now()}};
 handle_info(_Info, State) ->
     {noreply, State}.
 

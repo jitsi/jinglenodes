@@ -1,3 +1,5 @@
+%% Example Usage: jn_component:start("jn.localhost", "secret", "localhost", 8888, "127.0.0.1").
+
 -module(jn_component).
 
 -define(NS_CHANNEL,'http://jabber.org/protocol/jinglenodes#channel').
@@ -29,9 +31,10 @@ init(JID, Pass, Server, Port, PubIP) ->
     exmpp_component:auth(XmppCom, JID, Pass),
     _StreamId = exmpp_component:connect(XmppCom, Server, Port),
     exmpp_component:handshake(XmppCom),
-    loop(XmppCom, JID, PubIP).
+    ChannelMonitor = scheduleChannelPurge(3000, [], 60000),
+    loop(XmppCom, JID, PubIP, ChannelMonitor).
 
-loop(XmppCom, JID, PubIP) ->
+loop(XmppCom, JID, PubIP, ChannelMonitor) ->
     receive
         stop ->
             exmpp_component:stop(XmppCom);
@@ -39,19 +42,19 @@ loop(XmppCom, JID, PubIP) ->
         Record = #received_packet{packet_type=message, raw_packet=Packet} ->
             io:format("~p~n", [Record]),
             process_message(XmppCom, Packet, JID),
-            loop(XmppCom, JID, PubIP);
+            loop(XmppCom, JID, PubIP, ChannelMonitor);
 	Record = #received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ} ->
 	    io:format("~p~n", [Record]),
-	    process_iq(XmppCom, Type, IQ, PubIP,exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)),JID),
-	    loop(XmppCom, JID, PubIP);
+	    process_iq(XmppCom, Type, IQ, PubIP,exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)),JID, ChannelMonitor),
+	    loop(XmppCom, JID, PubIP, ChannelMonitor);
 	Record ->
             io:format("~p~n", [Record]),
-            loop(XmppCom, JID, PubIP)
+            loop(XmppCom, JID, PubIP, ChannelMonitor)
     end.
 
 %% Create Channel and return details
-process_iq(XmppCom, "get", IQ, PubIP, ?NS_CHANNEL, _) ->
-    case allocate_relay() of
+process_iq(XmppCom, "get", IQ, PubIP, ?NS_CHANNEL, _, ChannelMonitor) ->
+    case allocate_relay(ChannelMonitor) of
 	{A, B} ->
 		Result = exmpp_iq:result(IQ,get_candidate_elem(PubIP, A, B)),
 		exmpp_component:send_packet(XmppCom, Result);
@@ -60,7 +63,7 @@ process_iq(XmppCom, "get", IQ, PubIP, ?NS_CHANNEL, _) ->
 		exmpp_component:send_packet(XmppCom, Error)
 	end; 
 
-process_iq(XmppCom, "get", IQ, _, ?NS_DISCO_INFO, _) ->
+process_iq(XmppCom, "get", IQ, _, ?NS_DISCO_INFO, _, _) ->
         Identity = exmpp_xml:element(?NS_DISCO_INFO, 'identity', [exmpp_xml:attribute("category", <<"proxy">>),
                                                       exmpp_xml:attribute("type", <<"relay">>),
                                                       exmpp_xml:attribute("name", <<"Jingle Nodes Relay">>)
@@ -71,14 +74,14 @@ process_iq(XmppCom, "get", IQ, _, ?NS_DISCO_INFO, _) ->
         Result = exmpp_iq:result(IQ, exmpp_xml:element(?NS_DISCO_INFO, 'query', [], [Identity, IQRegisterFeature1, IQRegisterFeature2])),
         exmpp_component:send_packet(XmppCom, Result);
 
-process_iq(XmppCom, "get", IQ, _, ?NS_JINGLE_NODES, JID) ->
+process_iq(XmppCom, "get", IQ, _, ?NS_JINGLE_NODES, JID, _) ->
 	Relay = exmpp_xml:element(undefined, 'relay', [exmpp_xml:attribute('policy',"public"), exmpp_xml:attribute('protocol',"udp"), exmpp_xml:attribute('address',JID)], []),
 	Services = exmpp_xml:element(?NS_JINGLE_NODES, ?NAME_SERVICES, [],[Relay]),
 	Result = exmpp_iq:result(IQ, Services),
 	io:format("~p~n", [Result]),
 	exmpp_component:send_packet(XmppCom, Result);
 
-process_iq(XmppCom, "get", IQ, _, _, _) ->
+process_iq(XmppCom, "get", IQ, _, _, _, _) ->
 		    Error = exmpp_iq:error(IQ,'feature-not-implemented'),
 		    exmpp_component:send_packet(XmppCom, Error).
 
@@ -97,15 +100,18 @@ process_message(XmppCom, Packet, JID) ->
     NewPacket = exmpp_xml:remove_attribute(Tmp2, id),
     exmpp_component:send_packet(XmppCom, NewPacket).
 
-allocate_relay() -> allocate_relay(10000,10).
-allocate_relay(_, 0) -> {error};
-allocate_relay(I, Tries) ->
+allocate_relay(ChannelMonitor) -> allocate_relay(ChannelMonitor, 10000,10).
+allocate_relay(_, _, 0) -> {error, null};
+allocate_relay(ChannelMonitor, I, Tries) ->
      case udp_relay:start(I,I+2) of
-	{ok, _} -> {I,I+2};
-	_ -> allocate_relay(I+3,Tries-1)
+	{ok, R} -> 
+		ChannelMonitor ! R,
+		{I,I+2};
+	_ -> allocate_relay(ChannelMonitor, I+3,Tries-1)
      end.
 
-check_relay(Relay, Timeout) ->
+check_relay(Relay, _) ->
+	io:format("Checking: ~p~n", [Relay]),
 	ok.
 
 check_relays(Relays, Timeout) ->
@@ -118,13 +124,13 @@ check_relays([A|B], Timeout, Remain) ->
 	_ -> check_relays(B, Timeout, Remain)
 	end.
 
-scheduleChannelPurge(Period, Message, Timeout) -> spawn(fun () -> schedule(Period, Message, Timeout) end).
+scheduleChannelPurge(Period, Relays, Timeout) -> spawn(fun () -> schedule(Period, Relays, Timeout) end).
 
-schedule(Period, Message, Timeout) ->
+schedule(Period, Relays, Timeout) ->
     receive
-        NewMessage when is_list(NewMessage)  -> schedule(Period, NewMessage, Timeout)
+        NewMessage -> schedule(Period, [NewMessage| Relays], Timeout)
     after Period ->
-        io:format("~p~n", [Message]),
-	Remain = check_relays(Message, Timeout),
+        io:format("Opened Relays:~p~n", [Relays]),
+	Remain = check_relays(Relays, Timeout),
         schedule(Period, Remain, Timeout)
     end.

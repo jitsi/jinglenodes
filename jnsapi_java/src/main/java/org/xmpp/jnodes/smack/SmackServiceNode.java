@@ -8,6 +8,7 @@ import org.jivesoftware.smack.packet.Packet;
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.provider.ProviderManager;
 import org.jivesoftware.smackx.ServiceDiscoveryManager;
+import org.jivesoftware.smackx.packet.DiscoverItems;
 import org.xmpp.jnodes.RelayChannel;
 
 import java.io.IOException;
@@ -251,6 +252,8 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
 
         final MappedNodes mappedNodes = new MappedNodes();
 
+        searchDiscoItems(xmppConnection, maxEntries, xmppConnection.getHost(), mappedNodes, maxDepth - 1, protocol, visited);
+
         // Request to Server
         deepSearch(xmppConnection, maxEntries, xmppConnection.getHost(), mappedNodes, maxDepth - 1, protocol, visited);
 
@@ -265,6 +268,22 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         }
 
         return mappedNodes;
+    }
+
+    private static void searchDiscoItems(final XMPPConnection xmppConnection, final int maxEntries, final String startPoint, final MappedNodes mappedNodes, final int maxDepth, final JingleChannelIQ.Protocol protocol, final ConcurrentHashMap<String, String> visited) {
+        final DiscoverItems items = new DiscoverItems();
+        items.setTo(startPoint);
+        PacketCollector collector = xmppConnection.createPacketCollector(new PacketIDFilter(items.getPacketID()));
+        xmppConnection.sendPacket(items);
+        DiscoverItems result = (DiscoverItems) collector.nextResult(Math.round(SmackConfiguration.getPacketReplyTimeout() * 1.5));
+
+        if (result != null) {
+            final Iterator<DiscoverItems.Item> i = result.getItems();
+            for (DiscoverItems.Item item = i.hasNext() ? i.next() : null; item != null; item = i.hasNext() ? i.next() : null) {
+                deepSearch(xmppConnection, maxEntries, item.getEntityID(), mappedNodes, maxDepth, protocol, visited);
+            }
+        }
+        collector.cancel();
     }
 
     public static class MappedNodes {

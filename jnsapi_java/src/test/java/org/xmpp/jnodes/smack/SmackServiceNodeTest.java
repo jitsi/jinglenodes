@@ -171,8 +171,8 @@ public class SmackServiceNodeTest extends TestCase {
         SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssns.get(0).getConnection(), users, users, null);
         Thread.sleep(200);
 
-        assertEquals(ma.getRelayEntries().size(), users - 1);
-        assertEquals(ma.getTrackerEntries().size(), users - 2);
+        assertTrue(ma.getRelayEntries().size() >= users - 1);
+        assertTrue(ma.getTrackerEntries().size() >= users - 2);
 
         for (final TrackerEntry entry : ma.getRelayEntries().values()) {
             JingleChannelIQ iq = SmackServiceNode.getChannel(ssns.get(0).getConnection(), entry.getJid());

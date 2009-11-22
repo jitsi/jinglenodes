@@ -29,10 +29,14 @@
 -include_lib("exmpp/include/exmpp.hrl").
 -include_lib("exmpp/include/exmpp_client.hrl").
 
--export([start/6, stop/1]).
+-export([start/1, start/6, stop/1]).
 -export([init/6]).
 
 -record(relay, {pid, user}).
+
+start([JID, Pass, Server, Port, PubIP, ChannelTimeout]) ->
+           spawn(?MODULE, init, [JID, Pass, Server, Port, PubIP, ChannelTimeout]
+).
 
 start(JID, Pass, Server, Port, PubIP, ChannelTimeout) ->
 	   spawn(?MODULE, init, [JID, Pass, Server, Port, PubIP, ChannelTimeout]).

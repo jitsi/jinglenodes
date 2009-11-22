@@ -51,6 +51,9 @@ init([Port1, Port2]) ->
 	    {stop, Errs}
     end.
 
+handle_call(get_timestamp, _From, State) ->
+    {reply, State#state.lastTimestamp, State};
+
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 

@@ -1,4 +1,13 @@
-%% Example Usage: jn_component:start("jn.localhost", "secret", "localhost", 8888, "127.0.0.1").
+%%%-------------------------------------------------------------------
+%%% File    : jn_component.erl
+%%% Author  : Thiago Camargo <barata7@gmail.com>
+%%% Description : Jingle Nodes Services - External Component
+%%% Provides:
+%%%		* UDP Relay Services
+%%%
+%%% Created : 01 Nov 2009 by Thiago Camargo <barata7@gmail.com>
+%%% Example Usage: jn_component:start("jn.localhost", "secret", "localhost", 8888, "127.0.0.1").
+%%%-------------------------------------------------------------------
 
 -module(jn_component).
 
@@ -14,6 +23,8 @@
 
 -export([start/5, stop/1]).
 -export([init/5]).
+
+-record(relay, {pid, user}).
 
 start(JID, Pass, Server, Port, PubIP) ->
 	   spawn(?MODULE, init, [JID, Pass, Server, Port, PubIP]).
@@ -31,7 +42,7 @@ init(JID, Pass, Server, Port, PubIP) ->
     exmpp_component:auth(XmppCom, JID, Pass),
     _StreamId = exmpp_component:connect(XmppCom, Server, Port),
     exmpp_component:handshake(XmppCom),
-    ChannelMonitor = scheduleChannelPurge(3000, [], 60000),
+    ChannelMonitor = scheduleChannelPurge(3000, [], 10000),
     loop(XmppCom, JID, PubIP, ChannelMonitor).
 
 loop(XmppCom, JID, PubIP, ChannelMonitor) ->
@@ -54,7 +65,8 @@ loop(XmppCom, JID, PubIP, ChannelMonitor) ->
 
 %% Create Channel and return details
 process_iq(XmppCom, "get", IQ, PubIP, ?NS_CHANNEL, _, ChannelMonitor) ->
-    case allocate_relay(ChannelMonitor) of
+    P = exmpp_xml:get_attribute(exmpp_iq:get_payload(IQ),"from","server"),
+    case allocate_relay(ChannelMonitor, P) of
 	{A, B} ->
 		Result = exmpp_iq:result(IQ,get_candidate_elem(PubIP, A, B)),
 		exmpp_component:send_packet(XmppCom, Result);
@@ -100,19 +112,28 @@ process_message(XmppCom, Packet, JID) ->
     NewPacket = exmpp_xml:remove_attribute(Tmp2, id),
     exmpp_component:send_packet(XmppCom, NewPacket).
 
-allocate_relay(ChannelMonitor) -> allocate_relay(ChannelMonitor, 10000,10).
-allocate_relay(_, _, 0) -> {error, null};
-allocate_relay(ChannelMonitor, I, Tries) ->
+allocate_relay(ChannelMonitor, U) -> allocate_relay(ChannelMonitor, U, 10000,10).
+allocate_relay(_, _, _, 0) -> {error, null};
+allocate_relay(ChannelMonitor, U, I, Tries) ->
      case udp_relay:start(I,I+2) of
 	{ok, R} -> 
-		ChannelMonitor ! R,
+		ChannelMonitor ! #relay{pid=R, user=U},
 		{I,I+2};
-	_ -> allocate_relay(ChannelMonitor, I+3,Tries-1)
+	_ -> allocate_relay(ChannelMonitor, U, I+3,Tries-1)
      end.
 
-check_relay(Relay, _) ->
-	io:format("Checking: ~p~n", [Relay]),
-	ok.
+check_relay(#relay{pid= PID}, Timeout) ->
+	io:format("Checking: ~p~n", [PID]),
+	T = gen_server:call(PID, get_timestamp),
+	io:format("GS_CALL: ~p~n", [T]),
+	Delta = timer:now_diff(now(), T)/1000,
+	if
+	Delta > Timeout ->
+		exit(PID,kill),
+		removed;
+	true -> 
+		ok
+	end.
 
 check_relays(Relays, Timeout) ->
 	check_relays(Relays, Timeout, []).
@@ -128,7 +149,9 @@ scheduleChannelPurge(Period, Relays, Timeout) -> spawn(fun () -> schedule(Period
 
 schedule(Period, Relays, Timeout) ->
     receive
-        NewMessage -> schedule(Period, [NewMessage| Relays], Timeout)
+        NewRelay -> 
+		io:format("Relay Added: ~p~n", [NewRelay]),
+		schedule(Period, [NewRelay | Relays], Timeout)
     after Period ->
         io:format("Opened Relays:~p~n", [Relays]),
 	Remain = check_relays(Relays, Timeout),

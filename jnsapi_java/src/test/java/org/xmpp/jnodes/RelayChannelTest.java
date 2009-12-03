@@ -29,7 +29,7 @@ public class RelayChannelTest extends TestCase {
             futures.add(executorService.submit(new Runnable() {
                 public void run() {
                     try {
-                        socketTest(new TestSocket.ChannelProvider() {
+                        socketTest(new MockSocket.ChannelProvider() {
                             public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
                                 return SelDatagramChannel.open(datagramListener, address);
                             }
@@ -70,7 +70,7 @@ public class RelayChannelTest extends TestCase {
 
         boolean f = true;
         for (int i = 0; i < 1 && f; i++) {
-            f = socketTest(new TestSocket.ChannelProvider() {
+            f = socketTest(new MockSocket.ChannelProvider() {
                 public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
                     return SelDatagramChannel.open(datagramListener, address);
                 }
@@ -83,17 +83,17 @@ public class RelayChannelTest extends TestCase {
         return f;
     }
 
-    public void socketTest(final TestSocket.ChannelProvider provider, final int socketRange, final int relayRange) throws IOException, InterruptedException {
+    public void socketTest(final MockSocket.ChannelProvider provider, final int socketRange, final int relayRange) throws IOException, InterruptedException {
             final int num = 2;
             final int packets = 10;
             final int tests = 1;
-            final List<TestSocket> cs = new ArrayList<TestSocket>();
+            final List<MockSocket> cs = new ArrayList<MockSocket>();
             final List<RelayChannel> rc = new ArrayList<RelayChannel>();
 
             for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
                 for (int t = 0; t < num; t++) {
                     try {
-                        final TestSocket s = new TestSocket(localIP, socketRange + j, provider);
+                        final MockSocket s = new MockSocket(localIP, socketRange + j, provider);
                         cs.add(s);
                         break;
                     } catch (BindException e) {
@@ -128,8 +128,8 @@ public class RelayChannelTest extends TestCase {
                         public void run() {
                             final AtomicInteger sent = new AtomicInteger(0);
                             for (int i = 0; i < num; i++) {
-                                final TestSocket a = cs.get(i);
-                                final TestSocket b = i % 2 == 0 ? cs.get(i + 1) : cs.get(i - 1);
+                                final MockSocket a = cs.get(i);
+                                final MockSocket b = i % 2 == 0 ? cs.get(i + 1) : cs.get(i - 1);
 
                                 final RelayChannel c = rc.get(i / 2);
                                 final SocketAddress d = i % 2 == 0 ? c.getAddressA() : c.getAddressB();
@@ -169,7 +169,7 @@ public class RelayChannelTest extends TestCase {
                     Thread.sleep(5);
                     int a = 0;
                     int b = 0;
-                    for (final TestSocket s : cs) {
+                    for (final MockSocket s : cs) {
                         if (s.getI().get() >= packets) {
                             b++;
                         } else if (s.getI().get() >= target) {
@@ -188,13 +188,13 @@ public class RelayChannelTest extends TestCase {
                 }
                 tTime += d;
 
-                for (final TestSocket ts : cs)
+                for (final MockSocket ts : cs)
                     ts.getI().set(0);
             }
 
             System.out.println(provider.getName() + " -> Max: " + max + "ms, Min: " + min + "ms, Avg: " + Math.ceil(tTime / tests) + "ms");
 
-            for (final TestSocket ts : cs) {
+            for (final MockSocket ts : cs) {
                 ts.getChannel().close();
             }
             for (final RelayChannel r : rc) {
@@ -203,16 +203,16 @@ public class RelayChannelTest extends TestCase {
 
     }
 
-    public static boolean socketTest(final TestSocket.ChannelProvider provider, final SocketAddress sa, final SocketAddress sb) throws IOException, InterruptedException {
+    public static boolean socketTest(final MockSocket.ChannelProvider provider, final SocketAddress sa, final SocketAddress sb) throws IOException, InterruptedException {
         final int num = 2;
         int packets = 25;
         int tests = 100;
-        final List<TestSocket> cs = new ArrayList<TestSocket>();
+        final List<MockSocket> cs = new ArrayList<MockSocket>();
 
         for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
             for (int t = 0; t < 50; t++) {
                 try {
-                    final TestSocket s = new TestSocket(localIP, 20000 + j, provider);
+                    final MockSocket s = new MockSocket(localIP, 20000 + j, provider);
                     cs.add(s);
                     break;
                 } catch (BindException e) {
@@ -232,8 +232,8 @@ public class RelayChannelTest extends TestCase {
 
             for (int ii = 0; ii < packets; ii++)
                 for (int i = 0; i < num; i++) {
-                    final TestSocket a = cs.get(i);
-                    final TestSocket b = i % 2 == 0 ? cs.get(i + 1) : cs.get(i - 1);
+                    final MockSocket a = cs.get(i);
+                    final MockSocket b = i % 2 == 0 ? cs.get(i + 1) : cs.get(i - 1);
 
                     final SocketAddress d = i % 2 == 0 ? sa : sb;
 
@@ -263,7 +263,7 @@ public class RelayChannelTest extends TestCase {
                 tTime += d;
             }
 
-            for (final TestSocket ts : cs)
+            for (final MockSocket ts : cs)
                 ts.getI().set(0);
         }
 
@@ -271,7 +271,7 @@ public class RelayChannelTest extends TestCase {
             System.out.println(provider.getName() + " -> Max: " + max + "ms, Min: " + min + "ms, Avg: " + Math.ceil(tTime / tests) + "ms");
         }
 
-        for (final TestSocket ts : cs) {
+        for (final MockSocket ts : cs) {
             ts.getChannel().close();
         }
 

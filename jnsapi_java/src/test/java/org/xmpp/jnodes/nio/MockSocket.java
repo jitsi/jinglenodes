@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class TestSocket {
+public class MockSocket {
     public interface ChannelProvider {
         public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException;
 
@@ -22,7 +22,7 @@ public class TestSocket {
     final private ListenerDatagramChannel channel;
     final private ByteBuffer expectedBuffer;
 
-    public TestSocket(final String localIP, final int port, final ChannelProvider provider) throws IOException {
+    public MockSocket(final String localIP, final int port, final ChannelProvider provider) throws IOException {
         msg = String.valueOf(Math.random() * 10);
         b = msg.getBytes(encode);
         expectedBuffer = ByteBuffer.wrap(b);

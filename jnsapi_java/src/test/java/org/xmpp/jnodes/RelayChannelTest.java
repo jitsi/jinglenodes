@@ -2,7 +2,10 @@ package org.xmpp.jnodes;
 
 import junit.framework.TestCase;
 import org.junit.Ignore;
-import org.xmpp.jnodes.nio.*;
+import org.xmpp.jnodes.nio.DatagramListener;
+import org.xmpp.jnodes.nio.ListenerDatagramChannel;
+import org.xmpp.jnodes.nio.MockSocket;
+import org.xmpp.jnodes.nio.SelDatagramChannel;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -23,8 +26,9 @@ public class RelayChannelTest extends TestCase {
 
     public void testDatagramChannels() {
         final List<Future> futures = new ArrayList<Future>();
+        int max = 1;
 
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < max; i++) {
             final int ii = i;
             futures.add(executorService.submit(new Runnable() {
                 public void run() {
@@ -41,7 +45,7 @@ public class RelayChannelTest extends TestCase {
                     } catch (IOException e) {
                         e.printStackTrace();
                     } catch (InterruptedException e) {
-                        e.printStackTrace();  
+                        e.printStackTrace();
                     }
                 }
             }));
@@ -84,122 +88,122 @@ public class RelayChannelTest extends TestCase {
     }
 
     public void socketTest(final MockSocket.ChannelProvider provider, final int socketRange, final int relayRange) throws IOException, InterruptedException {
-            final int num = 2;
-            final int packets = 10;
-            final int tests = 1;
-            final List<MockSocket> cs = new ArrayList<MockSocket>();
-            final List<RelayChannel> rc = new ArrayList<RelayChannel>();
+        final int num = 2;
+        final int packets = 10;
+        final int tests = 1;
+        final List<MockSocket> cs = new ArrayList<MockSocket>();
+        final List<RelayChannel> rc = new ArrayList<RelayChannel>();
 
-            for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
+        for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
+            for (int t = 0; t < num; t++) {
+                try {
+                    final MockSocket s = new MockSocket(localIP, socketRange + j, provider);
+                    cs.add(s);
+                    break;
+                } catch (BindException e) {
+                    j++;
+                }
+            }
+            if (i % 2 == 0) {
                 for (int t = 0; t < num; t++) {
                     try {
-                        final MockSocket s = new MockSocket(localIP, socketRange + j, provider);
-                        cs.add(s);
+                        final RelayChannel c = new RelayChannel(localIP, relayRange + l, relayRange + l + 1);
+                        rc.add(c);
                         break;
                     } catch (BindException e) {
-                        j++;
-                    }
-                }
-                if (i % 2 == 0) {
-                    for (int t = 0; t < num; t++) {
-                        try {
-                            final RelayChannel c = new RelayChannel(localIP, relayRange + l, relayRange + l + 1);
-                            rc.add(c);
-                            break;
-                        } catch (BindException e) {
-                            l++;
-                        }
+                        l++;
                     }
                 }
             }
+        }
 
-            long tTime = 0;
-            long min = 1000;
-            long max = 0;
-            final AtomicInteger fSent = new AtomicInteger(0);
+        long tTime = 0;
+        long min = 1000;
+        long max = 0;
+        final AtomicInteger fSent = new AtomicInteger(0);
 
-            for (int h = 0; h < tests; h++) {
-                final List<Future> futures = new ArrayList<Future>();
+        for (int h = 0; h < tests; h++) {
+            final List<Future> futures = new ArrayList<Future>();
 
-                final long start = System.currentTimeMillis();
+            final long start = System.currentTimeMillis();
 
-                for (int ii = 0; ii < packets; ii++) {
-                    futures.add(executorService.submit(new Runnable() {
-                        public void run() {
-                            final AtomicInteger sent = new AtomicInteger(0);
-                            for (int i = 0; i < num; i++) {
-                                final MockSocket a = cs.get(i);
-                                final MockSocket b = i % 2 == 0 ? cs.get(i + 1) : cs.get(i - 1);
+            for (int ii = 0; ii < packets; ii++) {
+                futures.add(executorService.submit(new Runnable() {
+                    public void run() {
+                        final AtomicInteger sent = new AtomicInteger(0);
+                        for (int i = 0; i < num; i++) {
+                            final MockSocket a = cs.get(i);
+                            final MockSocket b = i % 2 == 0 ? cs.get(i + 1) : cs.get(i - 1);
 
-                                final RelayChannel c = rc.get(i / 2);
-                                final SocketAddress d = i % 2 == 0 ? c.getAddressA() : c.getAddressB();
+                            final RelayChannel c = rc.get(i / 2);
+                            final SocketAddress d = i % 2 == 0 ? c.getAddressA() : c.getAddressB();
 
-                                try {
-                                    int ss = 0;
-                                    while (ss == 0) {
-                                        ss = a.getChannel().send(b.getExpectedBuffer().duplicate(), d);
-                                        if (ss == 0) {
-                                            System.out.println("Retrying Send...");
-                                        } else {
-                                            sent.incrementAndGet();
-                                        }
+                            try {
+                                int ss = 0;
+                                while (ss == 0) {
+                                    ss = a.getChannel().send(b.getExpectedBuffer().duplicate(), d);
+                                    if (ss == 0) {
+                                        System.out.println("Retrying Send...");
+                                    } else {
+                                        sent.incrementAndGet();
                                     }
-                                } catch (IOException e) {
-                                    e.printStackTrace();
                                 }
+                            } catch (IOException e) {
+                                e.printStackTrace();
                             }
-                            fSent.incrementAndGet();
                         }
-                    }));
+                        fSent.incrementAndGet();
+                    }
+                }));
+            }
+
+            boolean finished = false;
+
+            while (!finished) {
+                Thread.sleep(1);
+                finished = true;
+                for (final Future f : futures) {
+                    finished &= f.isDone();
                 }
+            }
 
-                boolean finished = false;
-
-                while (!finished) {
-                    Thread.sleep(1);
-                    finished = true;
-                    for (final Future f : futures) {
-                        finished &= f.isDone();
+            finished = false;
+            final int target = packets - 1;
+            while (!finished) {
+                Thread.sleep(5);
+                int a = 0;
+                int b = 0;
+                for (final MockSocket s : cs) {
+                    if (s.getI().get() >= packets) {
+                        b++;
+                    } else if (s.getI().get() >= target) {
+                        a++;
                     }
                 }
-
-                finished = false;
-                final int target = packets - 1;
-                while (!finished) {
-                    Thread.sleep(5);
-                    int a = 0;
-                    int b = 0;
-                    for (final MockSocket s : cs) {
-                        if (s.getI().get() >= packets) {
-                            b++;
-                        } else if (s.getI().get() >= target) {
-                            a++;
-                        }
-                    }
-                    finished = a + b == num;
-                }
-
-                final long d = (System.currentTimeMillis() - start);
-                if (d > max) {
-                    max = d;
-                }
-                if (d < min) {
-                    min = d;
-                }
-                tTime += d;
-
-                for (final MockSocket ts : cs)
-                    ts.getI().set(0);
+                finished = a + b == num;
             }
 
-            System.out.println(provider.getName() + " -> Max: " + max + "ms, Min: " + min + "ms, Avg: " + Math.ceil(tTime / tests) + "ms");
+            final long d = (System.currentTimeMillis() - start);
+            if (d > max) {
+                max = d;
+            }
+            if (d < min) {
+                min = d;
+            }
+            tTime += d;
 
-            for (final MockSocket ts : cs) {
-                ts.getChannel().close();
-            }
-            for (final RelayChannel r : rc) {
-                r.close();
-            }
+            for (final MockSocket ts : cs)
+                ts.getI().set(0);
+        }
+
+        System.out.println(provider.getName() + " -> Max: " + max + "ms, Min: " + min + "ms, Avg: " + Math.ceil(tTime / tests) + "ms");
+
+        for (final MockSocket ts : cs) {
+            ts.getChannel().close();
+        }
+        for (final RelayChannel r : rc) {
+            r.close();
+        }
 
     }
 
@@ -276,6 +280,20 @@ public class RelayChannelTest extends TestCase {
         }
 
         return finished;
+    }
+
+    public void testSocketPerformance() {
+        int max = 500;
+        for (int j = 0; j < max; j++)
+            for (int i = 0; i < max; i++) {
+                try {
+                    SelDatagramChannel c = SelDatagramChannel.open(null, new InetSocketAddress(localIP, i + 30000));
+                    c.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
     }
 
     public static void main(String args[]) {

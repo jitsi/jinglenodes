@@ -208,13 +208,13 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
 
         PacketCollector collector = xmppConnection.createPacketCollector(new PacketIDFilter(iq.getPacketID()));
         xmppConnection.sendPacket(iq);
-        JingleTrackerIQ result = (JingleTrackerIQ) collector.nextResult(Math.round(SmackConfiguration.getPacketReplyTimeout() * 1.5));
+        Packet result = collector.nextResult(Math.round(SmackConfiguration.getPacketReplyTimeout() * 1.5));
         collector.cancel();
 
-        return result;
+        return result instanceof JingleTrackerIQ ? (JingleTrackerIQ) result : null;
     }
 
-    private static void deepSearch(final XMPPConnection xmppConnection, final int maxEntries, final String startPoint, final MappedNodes mappedNodes, final int maxDepth, final JingleChannelIQ.Protocol protocol, final ConcurrentHashMap<String, String> visited) {
+    private static void deepSearch(final XMPPConnection xmppConnection, final int maxEntries, final String startPoint, final MappedNodes mappedNodes, final int maxDepth, final int maxSearchNodes, final JingleChannelIQ.Protocol protocol, final ConcurrentHashMap<String, String> visited) {
         if (xmppConnection == null || !xmppConnection.isConnected()) {
             return;
         }
@@ -224,6 +224,9 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         if (startPoint.equals(xmppConnection.getUser())) {
             return;
         }
+        if (visited.size() > maxSearchNodes) {
+            return;
+        }
 
         JingleTrackerIQ result = getServices(xmppConnection, startPoint);
         visited.put(startPoint, startPoint);
@@ -231,7 +234,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
             for (final TrackerEntry entry : result.getEntries()) {
                 if (entry.getType().equals(TrackerEntry.Type.tracker)) {
                     mappedNodes.getTrackerEntries().put(entry.getJid(), entry);
-                    deepSearch(xmppConnection, maxEntries, entry.getJid(), mappedNodes, maxDepth - 1, protocol, visited);
+                    deepSearch(xmppConnection, maxEntries, entry.getJid(), mappedNodes, maxDepth - 1, maxSearchNodes, protocol, visited);
                 } else if (entry.getType().equals(TrackerEntry.Type.relay)) {
                     if (protocol == null || protocol.equals(entry.getProtocol())) {
                         mappedNodes.getRelayEntries().put(entry.getJid(), entry);
@@ -241,28 +244,28 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         }
     }
 
-    public static MappedNodes searchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final JingleChannelIQ.Protocol protocol) {
-        return searchServices(new ConcurrentHashMap<String, String>(), xmppConnection, maxEntries, maxDepth, protocol);
+    public static MappedNodes searchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final JingleChannelIQ.Protocol protocol) {
+        return searchServices(new ConcurrentHashMap<String, String>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol);
     }
 
-    private static MappedNodes searchServices(final ConcurrentHashMap<String, String> visited, final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final JingleChannelIQ.Protocol protocol) {
+    private static MappedNodes searchServices(final ConcurrentHashMap<String, String> visited, final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final JingleChannelIQ.Protocol protocol) {
         if (xmppConnection == null || !xmppConnection.isConnected()) {
             return null;
         }
 
         final MappedNodes mappedNodes = new MappedNodes();
 
-        searchDiscoItems(xmppConnection, maxEntries, xmppConnection.getHost(), mappedNodes, maxDepth - 1, protocol, visited);
+        searchDiscoItems(xmppConnection, maxEntries, xmppConnection.getHost(), mappedNodes, maxDepth - 1, maxSearchNodes, protocol, visited);
 
         // Request to Server
-        deepSearch(xmppConnection, maxEntries, xmppConnection.getHost(), mappedNodes, maxDepth - 1, protocol, visited);
+        deepSearch(xmppConnection, maxEntries, xmppConnection.getHost(), mappedNodes, maxDepth - 1, maxSearchNodes, protocol, visited);
 
         // Request to Buddies
         for (final RosterEntry re : xmppConnection.getRoster().getEntries()) {
             for (final Iterator<Presence> i = xmppConnection.getRoster().getPresences(re.getUser()); i.hasNext();) {
                 final Presence presence = i.next();
                 if (presence.isAvailable()) {
-                    deepSearch(xmppConnection, maxEntries, presence.getFrom(), mappedNodes, maxDepth - 1, protocol, visited);
+                    deepSearch(xmppConnection, maxEntries, presence.getFrom(), mappedNodes, maxDepth - 1, maxSearchNodes, protocol, visited);
                 }
             }
         }
@@ -270,7 +273,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         return mappedNodes;
     }
 
-    private static void searchDiscoItems(final XMPPConnection xmppConnection, final int maxEntries, final String startPoint, final MappedNodes mappedNodes, final int maxDepth, final JingleChannelIQ.Protocol protocol, final ConcurrentHashMap<String, String> visited) {
+    private static void searchDiscoItems(final XMPPConnection xmppConnection, final int maxEntries, final String startPoint, final MappedNodes mappedNodes, final int maxDepth, final int maxSearchNodes, final JingleChannelIQ.Protocol protocol, final ConcurrentHashMap<String, String> visited) {
         final DiscoverItems items = new DiscoverItems();
         items.setTo(startPoint);
         PacketCollector collector = xmppConnection.createPacketCollector(new PacketIDFilter(items.getPacketID()));
@@ -280,7 +283,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         if (result != null) {
             final Iterator<DiscoverItems.Item> i = result.getItems();
             for (DiscoverItems.Item item = i.hasNext() ? i.next() : null; item != null; item = i.hasNext() ? i.next() : null) {
-                deepSearch(xmppConnection, maxEntries, item.getEntityID(), mappedNodes, maxDepth, protocol, visited);
+                deepSearch(xmppConnection, maxEntries, item.getEntityID(), mappedNodes, maxDepth, maxSearchNodes, protocol, visited);
             }
         }
         collector.cancel();

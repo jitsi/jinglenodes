@@ -1,23 +1,19 @@
 package org.xmpp.jnodes.smack;
 
 import junit.framework.TestCase;
-import org.jivesoftware.smack.XMPPException;
-import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.Roster;
-import org.jivesoftware.smack.packet.Presence;
+import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.packet.IQ;
+import org.jivesoftware.smack.packet.Presence;
 import org.junit.Ignore;
 import org.xmpp.jnodes.RelayChannelTest;
 import org.xmpp.jnodes.nio.LocalIPResolver;
 
 import java.io.IOException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 public class SmackServiceNodeTest extends TestCase {
-
-
     @Ignore("Meant to be ran manually")
     public void testConnect() throws InterruptedException, XMPPException, IOException {
 
@@ -105,14 +101,14 @@ public class SmackServiceNodeTest extends TestCase {
         }
 
         Thread.sleep(200);
-        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssn2.getConnection(), 10, 10, JingleChannelIQ.Protocol.udp);
+        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssn2.getConnection(), 10, 10, 50, JingleChannelIQ.Protocol.udp);
         ssn2.addEntries(ma);
 
         Thread.sleep(500);
 
         assertEquals(ma.getRelayEntries().size(), pub + unk);
 
-        SmackServiceNode.MappedNodes mb = SmackServiceNode.searchServices(ssn1.getConnection(), 10, 10, JingleChannelIQ.Protocol.udp);
+        SmackServiceNode.MappedNodes mb = SmackServiceNode.searchServices(ssn1.getConnection(), 10, 10, 50, JingleChannelIQ.Protocol.udp);
 
         Thread.sleep(500);
 
@@ -168,7 +164,7 @@ public class SmackServiceNodeTest extends TestCase {
 
         Thread.sleep(200);
 
-        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssns.get(0).getConnection(), users, users, null);
+        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssns.get(0).getConnection(), users, users, users * 2, null);
         Thread.sleep(200);
 
         assertTrue(ma.getRelayEntries().size() >= users - 1);

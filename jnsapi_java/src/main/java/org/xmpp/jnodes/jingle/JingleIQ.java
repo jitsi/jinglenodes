@@ -1,8 +1,11 @@
 package org.xmpp.jnodes.jingle;
 
 import org.jivesoftware.smack.packet.IQ;
+import org.jivesoftware.smack.packet.Presence;
+import org.jivesoftware.smack.packet.PacketExtension;
 import org.jivesoftware.smack.provider.IQProvider;
 import org.jivesoftware.smack.provider.ProviderManager;
+import org.jivesoftware.smack.XMPPConnection;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
@@ -31,7 +34,6 @@ public class JingleIQ extends IQ implements IQProvider {
                 parsingClasses.add(c);
             }
         }
-        ProviderManager.getInstance().addIQProvider(Jingle.elementName, Jingle.xmlns, new JingleIQ(new Jingle()));
     }
 
     public JingleIQ(final Jingle jingle) {
@@ -191,5 +193,29 @@ public class JingleIQ extends IQ implements IQProvider {
         Class[] classesA = new Class[classes.size()];
         classes.toArray(classesA);
         return classesA;
+    }
+
+    public static void enableJingle(final XMPPConnection connection) {
+        ProviderManager.getInstance().addIQProvider(Jingle.elementName, Jingle.xmlns, new JingleIQ(new Jingle()));
+
+        Presence presence = new Presence(Presence.Type.available);
+        presence.addExtension(new PacketExtension() {
+            public String getElementName() {
+                return "c";
+            }
+
+            public String getNamespace() {
+                return "http://jabber.org/protocol/caps";
+            }
+
+            public String toXML() {
+                return "<c xmlns=\"http://jabber.org/protocol/caps\" node=\"client:caps\" ver=\"0.1\" ext=\"jingle-v1 voice-v1\"></c>";
+            }
+        });
+
+        for (int i = 0; i < 3; i++) {
+            connection.sendPacket(presence);
+        }
+
     }
 }

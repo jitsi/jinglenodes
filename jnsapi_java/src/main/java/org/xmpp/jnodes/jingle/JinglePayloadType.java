@@ -8,6 +8,15 @@ public class JinglePayloadType extends JingleElement {
     @Skip
     final public static String elementName = "payload-type";
 
+    public JinglePayloadType() {
+    }
+
+    public JinglePayloadType(String id, String name, String clockrate) {
+        this.id = id;
+        this.name = name;
+        this.clockrate = clockrate;
+    }
+
     public String getId() {
         return id;
     }

@@ -7,8 +7,8 @@ public class JingleDescription extends JingleElement {
 
     @Skip
     public static final String elementName = "description";
-    public static final String xmlns = "urn:xmpp:jingle:apps:rtp:0";
-     String media;
+    public static final String xmlns = "urn:xmpp:tmp:jingle:apps:rtp";
+    String media;
     final List<JinglePayloadType> payloads = new ArrayList<JinglePayloadType>();
 
     public void addPayloadtype(final JinglePayloadType payloadType) {

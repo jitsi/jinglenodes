@@ -159,42 +159,6 @@ public class JingleIQ extends IQ implements IQProvider {
         return iq;
     }
 
-    public static Class[] getClasses(final String pckgname) throws ClassNotFoundException {
-        ArrayList<Class> classes = new ArrayList<Class>();
-        // Get a File object for the package
-        File directory = null;
-        try {
-            final ClassLoader cl = Thread.currentThread().getContextClassLoader();
-            final Enumeration<URL> urls = cl.getResources(pckgname.replace('.', '/'));
-            for (final URL url : Collections.list(urls)) {
-                directory = new File(url.toURI());
-                if (directory.exists()) {
-                    // Get the list of the files contained in the package
-                    String[] files = directory.list();
-                    for (String file : files) {
-                        // we are only interested in .class files
-                        if (file.endsWith(".class")) {
-                            // removes the .class extension
-                            classes.add(Class.forName(pckgname + '.' + file.substring(0, file.length() - 6)));
-                        }
-                    }
-                } else {
-                    throw new ClassNotFoundException(pckgname + " does not appear to be a valid package");
-                }
-            }
-        } catch (NullPointerException x) {
-            throw new ClassNotFoundException(pckgname + " does not appear to be a valid package");
-        } catch (URISyntaxException e) {
-            throw new ClassNotFoundException(pckgname + " does not appear to be a valid package");
-        } catch (IOException e) {
-            throw new ClassNotFoundException(pckgname + " does not appear to be a valid package");
-        }
-
-        Class[] classesA = new Class[classes.size()];
-        classes.toArray(classesA);
-        return classesA;
-    }
-
     public static void enableJingle(final XMPPConnection connection) {
         ProviderManager.getInstance().addIQProvider(Jingle.elementName, Jingle.xmlns, new JingleIQ(new Jingle()));
 

@@ -94,7 +94,7 @@ public class SmackServiceNodeTest extends TestCase {
             ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "p" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
         }
         for (int i = 0; i < unk; i++) {
-            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._unknown, "u" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
+            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._domain, "d" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
         }
         for (int i = 0; i < ros; i++) {
             ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._roster, "r" + String.valueOf(i), JingleChannelIQ.Protocol.udp));

@@ -7,7 +7,7 @@ public class TrackerEntry {
     }
 
     public enum Policy {
-        _public, _roster, _unknown;
+        _public, _roster, _domain;
 
         public String toString() {
             return this.name().substring(1);
@@ -16,7 +16,7 @@ public class TrackerEntry {
 
     private Type type;
     private Policy policy;
-    private boolean verified=false;
+    private boolean verified = false;
     private JingleChannelIQ.Protocol protocol = JingleChannelIQ.Protocol.udp;
     private String jid;
 

@@ -1,0 +1,272 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE xep SYSTEM 'xep.dtd' [
+  <!ENTITY % ents SYSTEM 'xep.ent'>
+%ents;
+]>
+<?xml-stylesheet type='text/xsl' href='xep.xsl'?>
+<xep>
+	<header>
+		<title>Jingle Relay Nodes</title>
+		<abstract>This documents specifies how Jingle Clients can interact with Jingle Relay Nodes Services and how XMPP entities can became and search for available Jingle Relay Nodes.</abstract>
+		<legal>
+			<copyright>This XMPP Extension Protocol is copyright (c) 1999 - 2009 by the XMPP Standards Foundation (XSF).</copyright>
+			<permissions>Permission is hereby granted, free of charge, to any person obtaining a copy of this specification (the &quot;"Specification&quot;"), to make use of the Specification without restriction, including without limitation the rights to implement the Specification in a software program, deploy the Specification in a network service, and copy, modify, merge, publish, translate, distribute, sublicense, or sell copies of the Specification, and to permit persons to whom the Specification is furnished to do so, subject to the condition that the foregoing copyright notice and this permission notice shall be included in all copies or substantial portions of the Specification. Unless separate permission is granted, modified works that are redistributed shall not contain misleading information regarding the authors, title, number, or publisher of the Specification, and shall not claim endorsement of the modified works by the authors, any organization or project to which the authors belong, or the XMPP Standards Foundation.</permissions>
+			<warranty>## NOTE WELL: This Specification is provided on an &quot;"AS IS&quot;" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied, including, without limitation, any warranties or conditions of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A PARTICULAR PURPOSE. In no event shall the XMPP Standards Foundation or the authors of this Specification be liable for any claim, damages, or other liability, whether in an action of contract, tort, or otherwise, arising from, out of, or in connection with the Specification or the implementation, deployment, or other use of the Specification. ##</warranty>
+			<liability>In no event and under no legal theory, whether in tort (including negligence), contract, or otherwise, unless required by applicable law (such as deliberate and grossly negligent acts) or agreed to in writing, shall the XMPP Standards Foundation or any author of this Specification be liable for damages, including any direct, indirect, special, incidental, or consequential damages of any character arising out of the use or inability to use the Specification (including but not limited to damages for loss of goodwill, work stoppage, computer failure or malfunction, or any and all other commercial damages or losses), even if the XMPP Standards Foundation or such author has been advised of the possibility of such damages.</liability>
+			<conformance>This XMPP Extension Protocol has been contributed in full conformance with the XSF's Intellectual Property Rights Policy (a copy of which may be found at &lt;<link url="http://www.xmpp.org/extensions/ipr-policy.shtml">http://www.xmpp.org/extensions/ipr-policy.shtml</link>&gt; or obtained by writing to XSF, P.O. Box 1641, Denver, CO 80201 USA).</conformance>
+		</legal>
+		<number>0777</number>
+		<status>ProtoXEP</status>
+		<type>Standards Track</type>
+		<sig>Standards</sig>
+		<approver>Council</approver>
+		<dependencies>
+			<spec>XMPP Core</spec>
+			<spec>XEP-0166</spec>
+			<spec>XEP-0177</spec>
+		</dependencies>
+		<supersedes/>
+		<supersededby/>
+		<shortname/>Jingle Nodes <author>
+			<firstname>Thiago</firstname>
+			<surname>Camargo</surname>
+			<email>thiago@xmppjingle.com</email>
+			<jid>barata7@gmail.com</jid>
+		</author>
+		<revision>
+			<version>0.0.1</version>
+			<date>2009-09-27</date>
+			<initials>psa</initials>
+			<remark>
+				<p>First draft.</p>
+			</remark>
+		</revision>
+	</header>
+	<section1 topic="Introduction" anchor="intro">
+		<p>
+Jingle Nodes are an XMPP Based UDP Relay Services providing standard UDP Relay, but negotiated via XMPP.
+Jingle Relay Nodes are intend to provide easy to use Jingle Relay Type Candidates that can be used in ICE-UDP and RAW-UDP Jingle Sessions.
+Relay Candidates can provide NAT Traversal for Jingle users with or without STUN/TURN Support.
+The main benefits of Jingle Relay Nodes is the easy to use candidates, Jingle Clients can became a Node and Jingle Relay Nodes are published via XMPP, meaning every Client or Server can also act as a tracker of another Nodes.</p>
+	</section1>
+	<section1 topic="Requirements" anchor="reqs">
+		<p>Jingle Relay Nodes MUST be binded directly to a Public IP address without firewall for UDP traffic on the port range reserved to be used by relay candidates. This is the main and unique requirement for a peer provide Relay Nodes Service.
+All signalling, request, response and publishing is done via XMPP, not requiring any extra stack or protocol in the Client or Server, for usage and discoveral of Nodes.</p>
+	</section1>
+	<section1 topic="Terminology" anchor="terminology">
+		<section2 topic="Glossary" anchor="terms-glossary">
+			<table caption="Glossary">
+				<tr>
+					<th>Term</th>
+					<th>Definition</th>
+				</tr>
+				<tr>
+					<td>UDP Relay Service</td>
+					<td>Relays are mainly used to transfer traffic to servers located on a NAT:ed (masqueraded) network, where the IP addresses on the NAT:ed network cannot be accessed from the outside. When you use an IP address that is for local use only, you must use NAT and relays because these IP addresses cannot be accessed in any other way. Relays can also be used for non-NAT:ed networks.</td>
+				</tr>
+				<tr>
+					<td>Jingle Relay Node</td>
+					<td>Is an instance of a UDP Relay Service that is negotiable via XMPP, following the procedures described on this Extension.</td>
+				</tr>
+				<tr>
+					<td>Node Tracker</td>
+					<td>Is the entity that trackers Jingle Relay Nodes and also publishes the list upon request. Potentially all Jingle Clients might act as a Node Tracker.</td>
+				</tr>
+				<tr>
+					<td>Channel</td>
+					<td>Is the UDP Relay Channel, provided by the a Jingle Relay Node. The channel act as a NAT Traversal Channel in order to delivery and receive media.</td>
+				</tr>
+				<tr>
+					<td>Consumer</td>
+					<td>Is the Jingle Client that makes use of a Channel. The Consumer receives a relay <link url="#transports">Transport Candidate</link> that can be used with <link url="http://xmpp.org/extensions/xep-0176.html">Jingle ICE-UDP Transport Method</link> or <link url="http://xmpp.org/extensions/xep-0177.html">Jingle Raw UDP Transport Method</link>.</td>
+				</tr>
+			</table>
+		</section2>
+		<section2 topic="Conventions" anchor="terms-conventions">
+			<p>In diagrams, the following conventions are used:</p>
+			<ul>
+				<li>Single-dashed lines (---) represent Jingle stanzas that are sent via the XMPP signalling channel.</li>
+				<li>Double-dashed lines (===) represent media packets that are sent via the data channel, which typically is not an XMPP channel (although the <cite>Jingle In-Band Bytestreams Transport Method</cite> is an exception) but instead is a direct or mediated channel between the endpoints.</li>
+			</ul>
+		</section2>
+	</section1>
+	<section1 topic="Use Cases" anchor="usecases">
+		<section2 topic="Jingle Client with RAW-UDP Transport without any NAT detection mechanism" anchor="rawudpnostun">
+			<p>A Jingle Client with only RAW-UDP support and any NAT detection mechanism can make use of Jingle Nodes. Although the traversal is not guarantee due problem with NAT configuration or firewalls, this method is fairly efficient as most SIP legacy services still provides their services in a similar way, meaning that this has the exactly same accertivity and reliability than regular SIP Services. This method is extremelly useful specially for simple platforms like mobile and clients in early stage of development that still wants to offer voice and video support.</p>
+			<p>
+				<em>Note: This use case is also similar to a Jingle to SIP Interoperability Service.</em>
+			</p>
+		</section2>
+		<section2 topic="Jingle Client with ICE-UDP Transport with STUN support but no TURN support" anchor="iceudpnoturn">
+			<p>A Jingle Client with STUN support but no TURN support can use Relay Node Services as the fallback candidate instead of a TURN candidate. For instance, after a connectivity check proccess, none of the direct candidates worked. The Client can use the Relay Node Candidate as the fallback candidate(the lowest priority candidate).</p>
+		</section2>
+		<section2 topic="Jingle Client with ICE-UDP Transport with STUN and TURN support" anchor="iceudpstunturn">
+			<p>A Jingle Client with STUN and TURN support still might need a Relay Candidate, specially as TURN servers are not widely deployed and don't have any mechanism to publish available services for users. TURN servers also requires specific UDP traffic in specific port ranges which can be blocked by users networks. In this case is very useful to have an extra fallback candidate that can be negotiated via XMPP rather than over UDP.</p>
+			<p>
+				<em>Note: Jingle Relay Nodes Services are much more likely to be found and be available than TURN servers, as users can also provide Jingle Relay Nodes services themselves or provide a list of known and available services, in this last case behaving a tracker. Is very likely that Jingle Relay Nodes will be available and discovered more easily and often than TURN servers.</em>
+			</p>
+		</section2>
+		<section2 topic="XMPP Client or Component in a Public IP" anchor="clientonpublicip">
+			<p>A XMPP Client or Component with direct access to a public IP can potentially provide the UDP Relay Service becaming itself a Jingle Relay Node. The service can intend to provide a public service, or a restricted services based on user preferences, like buddylist, whitelist, blacklist, domain, etc...</p>
+			<p>
+				<em>Note: It is NOT mandatory to became a Jingle Relay Node. This is OPTIONAL and SHOULD be done with user awareness and concentiment.</em>
+			</p>
+		</section2>
+	</section1>
+    <section1 topic="Discovery Process" anchor="discoveryprocess">
+		<section2 topic="Relay Channel Service" anchor="relaychannelservice">
+			<p>A Relay Channel Service is responsible for providing the actual Relay Services. It will receive Channel Requests, allocate the Relay Channel and return the ready to use details. If a Jingle Client knows the service address of one valid and reliable Relay Service, that is enough for place and receive Jingle Calls and transmit both ways media streams based on UDP.</p>
+			<p>Relay Channel Services support can be discovered by searching using <link url='#trackerservice'>Tracker Services</link>. It can also be discovered by <link url='#support'>service discovery described in this document</link>.</p>
+            <p>
+				<em>Note: Jingle Relay Channels can be used with RAW-UDP and ICE-UDP Jingle Transports.</em>
+			</p>
+		</section2>
+		<section2 topic="Tracker Service" anchor="trackerservice">
+			<p>A Tracker Service is responsible for providing addresses of known Relay Channel Services and other Tracker Services as well.</p>
+            <section3 topic="Services Types" anchor="servicetypes">
+            <p>Tracker entries MUST contain a 'type' attribute that represents the usage policy according to the table below:</p>
+            <table caption="Types of Service Usage Policy">
+				<tr>
+					<th>Type</th>
+					<th>Definition</th>
+				</tr>
+				<tr>
+					<td>public</td>
+					<td>Relays Services that are meant and opened for public usage, SHOULD use the type 'public'. Meaning that every user can make use of its services.</td>
+				</tr>
+				<tr>
+					<td>domain</td>
+					<td>Domain restrictive Relay Services that are only intended to provide service to users within the same domain as the service itself, SHOULD use the type 'domain'. Common usage in companies XMPP Servers.</td>
+				</tr>
+				<tr>
+					<td>roster</td>
+					<td>Relay Services that only provides Channels for users that are in it own roster, SHOULD use the type 'roster'. Meaning that only buddies can make se of its service. Common usage is XMPP Clients with Relay Services Capabilities.</td>
+				</tr>
+			</table>
+            </section3>
+		</section2>
+	</section1>
+	<section1 topic="Examples" anchor="rules">
+		<section2 topic="Jingle Client Consuming the Relay Service" anchor="clientconsumingrelay">
+			<p>A Jingle Client with direct access to a public IP can potentially provide the UDP Relay Service becaming itself a Jingle Relay Node. The service can intend to provide a public service, or a restricted services based on user preferences, like buddylist, whitelist, blacklist, domain, etc...</p>
+			<p>
+				<em>Note: It is NOT mandatory to became a Jingle Relay Node. This is OPTIONAL and SHOULD be done with user awareness and concentiment.</em>
+			</p>
+			 <example caption="UDP Relay Channel request"><![CDATA[
+<iq from='romeo@montague.lit/orchard'
+    id='uw72g176'
+    to='juliet@capulet.lit/balcony'
+    type='get'>
+  <candidate xmlns='http://jabber.org/protocol/jinglenodes#channel' protocol='udp'/>
+</iq>
+  ]]></example>
+  <example caption="Candidate Returned by a Node with channel bandwidth throttle"><![CDATA[
+  <iq from='juliet@capulet.lit/balcony'
+    id='uw72g176'
+    to='romeo@montague.lit/orchard'
+    type='result'>
+<candidate component='1'
+ id='el0747fg11'
+ host='200.20.2.10'
+ porta='35800'
+ portb='35802'
+ protocol='udp'
+ maxkbps='120'/>
+ </iq> ]]></example>
+		</section2>
+<section2 topic="Jingle Client Consuming the Tracker Services" anchor="clientconsumingtracker">
+			<p>A Jingle Client without direct access to a public IP can potentially provide the Tracking Service becaming itself a Jingle Relay Tracker. The tracking service is meant to provide a list of XMPP Addresses that provides Jingle Relay Channels and/or other Jingle Relay Trackers.</p>
+			<p>
+				<em>Note: It is NOT mandatory to became a Jingle Relay Tracker. This is OPTIONAL and SHOULD be done with user awareness and concentiment.</em>
+			</p>
+			 <example caption="UDP Relay Channel request"><![CDATA[
+<iq from='romeo@montague.lit/orchard'
+    id='uw72g176'
+    to='juliet@capulet.lit/balcony'
+    type='get'>
+  <services xmlns='http://jabber.org/protocol/jinglenodes'/>
+</iq>
+  ]]></example>
+  <example caption="Tracker Returned Known: Public, Roster and Domain Relay Services"><![CDATA[
+  <iq from='juliet@capulet.lit/balcony'
+    id='uw72g176'
+    to='romeo@montague.lit/orchard'
+    type='result'>
+<services xmlns='http://jabber.org/protocol/jinglenodes'>
+ <relay policy='domain' address='u1' protocol='udp'/>
+ <relay policy='roster' address='u0' protocol='udp'/>
+ <relay policy='public' address='p1' protocol='udp'/>
+ </services>
+ </iq> ]]></example>
+		</section2>        
+	</section1>
+	<section1 topic='Determining Support' anchor='support'>
+    <p>To advertise its support for the Jingle Nodes support, when replying to &xep0030; information requests an entity MUST return URNs for any version of this protocol that the entity supports -- e.g., "http://jabber.org/protocol/jinglenodes" for this version&VNOTE;.</p>
+    <p>If the entity supports, Jingle Nodes as a Tracker, it MUST reply to &xep0030; with "http://jabber.org/protocol/jinglenodes". If it also provides the Jingle Nodes Relay Services, it MUST reply with the URN "http://jabber.org/protocol/jinglenodes#channel".</p>
+  <example caption="Service discovery information request"><![CDATA[
+<iq from='romeo@montague.lit/orchard'
+    id='uw72g176'
+    to='juliet@capulet.lit/balcony'
+    type='get'>
+  <query xmlns='http://jabber.org/protocol/disco#info'/>
+</iq>
+  ]]></example>
+  <example caption="Service discovery information response"><![CDATA[
+<iq from='juliet@capulet.lit/balcony'
+    id='uw72g176'
+    to='romeo@montague.lit/orchard'
+    type='result'>
+  <query xmlns='http://jabber.org/protocol/disco#info'>
+     <feature var='http://jabber.org/protocol/jinglenodes'/>
+    <feature var='http://jabber.org/protocol/jinglenodes#channel'/>
+  </query>
+</iq>
+  ]]></example>
+  <p>In order for an application to determine whether an entity supports this protocol, where possible it SHOULD use the dynamic, presence-based profile of service discovery defined in &xep0115;. However, if an application has not received entity capabilities information from an entity, it SHOULD use explicit service discovery instead.</p>
+</section1>
+	<section1 topic="Implementation Notes" anchor="impl">
+		<p>When using a candidate provided by a Jingle Relay Service, the Jingle Client MUST set the candidate attribute to 'relay'. In order to make sure the other client won't allocate another channel as well. Which would lead in audio connectivity issues. In brief, if the caller is using a Relay Candidate the calle MUST NOT use another Relay Candidate discovered by itself. If a caller is not using a Relay Candidate(which can be determined by the candidate 'type' attribute) the callee MAY use a Relay Candidate in order to ensure communication.</p>
+	</section1>
+	<section1 topic="Accessibility Considerations" anchor="access">
+		<p>OPTIONAL.</p>
+	</section1>
+	<section1 topic="Internationalization Considerations" anchor="i18n">
+		<p>OPTIONAL.</p>
+	</section1>
+	<section1 topic="Security Considerations" anchor="security">
+		<p>It is heavily recommended that the Super Node implements throttle:</p>
+		<ul>
+			<p>
+				<li>Based on JID, allowing the control of how many concurrent channels an specific JID can have.</li>
+			</p>
+			<p>
+				<li>Based on JID, allowing the control of how many channel requests an specific JID can request in a time period.</li>
+			</p>
+			<p>
+				<li>Based on Bandwidth, allowing the control of how much bandwidth a channel can use. The maximum bandwidth SHOULD be included on the candidate element provided by a Super Node on the attribute maxkbps. If no attribute is present, it means that it has no bandwidth control.</li>
+			</p>
+			<example caption="Candidate Returned by a Node with channel bandwidth throttle (stub)"><![CDATA[
+<candidate component='1'
+ foundation='1'
+ generation='0'
+ id='el0747fg11'
+ ip='200.20.2.10'
+ network='1'
+ port='35800'
+ priority='1'
+ protocol='udp'
+ maxkbps='120'
+ type='relay'/>
+  ]]></example>
+		</ul>
+	</section1>
+	<section1 topic="IANA Considerations" anchor="iana">
+		<p>REQUIRED.</p>
+	</section1>
+	<section1 topic="XMPP Registrar Considerations" anchor="registrar">
+		<p>REQUIRED.</p>
+	</section1>
+	<section1 topic="XML Schema" anchor="schema">
+		<p>REQUIRED for protocol specifications.</p>
+	</section1>
+</xep>

@@ -45,7 +45,7 @@ init([Port1, Port2]) ->
 	  gen_udp:open(Port2, ?SOCKOPTS)} of
 	{{ok, Sock1}, {ok, Sock2}} ->
 	    ?INFO_MSG("relay started at ~p and ~p", [Port1, Port2]),
-	    {ok, #state{sock1 = Sock1, sock2 = Sock2}};
+	    {ok, #state{sock1 = Sock1, sock2 = Sock2, lastTimestamp= now()}};
 	Errs ->
 	    ?ERROR_MSG("unable to open port: ~p", [Errs]),
 	    {stop, Errs}

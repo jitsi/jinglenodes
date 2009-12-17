@@ -33,6 +33,7 @@
 -export([init/6]).
 
 -record(relay, {pid, user}).
+-record(jn_service, {address, xml}).
 
 start([JID, Pass, Server, Port, PubIP, ChannelTimeout]) ->
            spawn(?MODULE, init, [JID, Pass, Server, Port, PubIP, ChannelTimeout]
@@ -53,6 +54,10 @@ init(JID, Pass, Server, Port, PubIP, [_|_]=ChannelTimeout) ->
 	  init(JID, Pass, Server, Port, PubIP, NTimeout);
 
 init(JID, Pass, Server, Port, PubIP, ChannelTimeout) ->
+    mnesia:create_table(jn_service,
+            [{disc_only_copies, [node()]},
+             {type, set},
+             {attributes, record_info(fields, jn_service)}]),
     application:start(exmpp),
     XmppCom = exmpp_component:start(),
     exmpp_component:auth(XmppCom, JID, Pass),
@@ -78,8 +83,6 @@ loop(XmppCom, JID, PubIP, ChannelMonitor) ->
             ?INFO_MSG("Unknown Request: ", [Record]),
             loop(XmppCom, JID, PubIP, ChannelMonitor)
     end.
-
-
 
 %% Create Channel and return details
 process_iq(XmppCom, "get", IQ, PubIP, ?NS_CHANNEL, _, ChannelMonitor) ->
@@ -115,10 +118,12 @@ process_iq(XmppCom, "get", IQ, _, ?NS_JINGLE_NODES, JID, _) ->
 
 process_iq(XmppCom, "get", IQ, _, _, _, _) ->
 		    Error = exmpp_iq:error(IQ,'feature-not-implemented'),
-		    exmpp_component:send_packet(XmppCom, Error).
+		    exmpp_component:send_packet(XmppCom, Error);
 
 process_iq(XmppCom, "result", IQ, _, ?NS_JINGLE_NODES, JID, _) ->
-	.
+	RServices = exmpp_xml:get_elements(exmpp_iq:get_payload(IQ),"relay"),
+	TServices = exmpp_xml:get_elements(exmpp_iq:get_payload(IQ),"tracker"),
+	io:format("~p ~p~n",[RServices,TServices]). 
 
 get_candidate_elem(Host, A, B) ->
 	Raw_Elem = exmpp_xml:element(?NS_CHANNEL,?NAME_CHANNEL),

@@ -33,7 +33,8 @@
 -export([init/6]).
 
 -record(relay, {pid, user}).
--record(jn_service, {address, xml}).
+-record(jn_relay_service, {address, xml}).
+-record(jn_tracker_service, {address, xml}).
 
 start([JID, Pass, Server, Port, PubIP, ChannelTimeout]) ->
            spawn(?MODULE, init, [JID, Pass, Server, Port, PubIP, ChannelTimeout]
@@ -54,10 +55,14 @@ init(JID, Pass, Server, Port, PubIP, [_|_]=ChannelTimeout) ->
 	  init(JID, Pass, Server, Port, PubIP, NTimeout);
 
 init(JID, Pass, Server, Port, PubIP, ChannelTimeout) ->
-    mnesia:create_table(jn_service,
+    mnesia:create_table(jn_relay_service,
             [{disc_only_copies, [node()]},
              {type, set},
-             {attributes, record_info(fields, jn_service)}]),
+             {attributes, record_info(fields, jn_relay_service)}]),
+    mnesia:create_table(jn_tracker_service,
+            [{disc_only_copies, [node()]},
+             {type, set},
+             {attributes, record_info(fields, jn_tracker_service)}]),    
     application:start(exmpp),
     XmppCom = exmpp_component:start(),
     exmpp_component:auth(XmppCom, JID, Pass),
@@ -123,6 +128,7 @@ process_iq(XmppCom, "get", IQ, _, _, _, _) ->
 process_iq(XmppCom, "result", IQ, _, ?NS_JINGLE_NODES, JID, _) ->
 	RServices = exmpp_xml:get_elements(exmpp_iq:get_payload(IQ),"relay"),
 	TServices = exmpp_xml:get_elements(exmpp_iq:get_payload(IQ),"tracker"),
+	lists:foreach(fun(X)->R=#jn_relay_service{address=exmpp_xml:get_attribute(X,"address",""), xml=X}, mnesia:write(R) end, RServices),
 	io:format("~p ~p~n",[RServices,TServices]). 
 
 get_candidate_elem(Host, A, B) ->

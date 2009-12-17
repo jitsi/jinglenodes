@@ -79,9 +79,13 @@ loop(XmppCom, JID, PubIP, ChannelMonitor) ->
             loop(XmppCom, JID, PubIP, ChannelMonitor)
     end.
 
+
+
 %% Create Channel and return details
 process_iq(XmppCom, "get", IQ, PubIP, ?NS_CHANNEL, _, ChannelMonitor) ->
     P = exmpp_xml:get_attribute(exmpp_iq:get_payload(IQ),"from","server"),
+    TR = create_service_request(exmpp_stanza:get_sender(IQ)),
+    exmpp_component:send_packet(XmppCom, TR),
     case allocate_relay(ChannelMonitor, P) of
 	{A, B} ->
 		Result = exmpp_iq:result(IQ,get_candidate_elem(PubIP, A, B)),
@@ -113,11 +117,19 @@ process_iq(XmppCom, "get", IQ, _, _, _, _) ->
 		    Error = exmpp_iq:error(IQ,'feature-not-implemented'),
 		    exmpp_component:send_packet(XmppCom, Error).
 
+process_iq(XmppCom, "result", IQ, _, ?NS_JINGLE_NODES, JID, _) ->
+	.
+
 get_candidate_elem(Host, A, B) ->
 	Raw_Elem = exmpp_xml:element(?NS_CHANNEL,?NAME_CHANNEL),
         Elem_A = exmpp_xml:set_attribute(Raw_Elem, "porta", A),
         Elem_B = exmpp_xml:set_attribute(Elem_A, "portb", B),
 	exmpp_xml:set_attribute(Elem_B,"host", Host).
+
+create_service_request(Address) ->
+        Raw_Elem = exmpp_xml:element(?NS_JINGLE_NODES,?NAME_SERVICES),
+	IQ = exmpp_iq:get(?NS_COMPONENT_ACCEPT,Raw_Elem),
+	exmpp_stanza:set_recipient(IQ, Address).
 
 %% Reply Stats
 process_message(XmppCom, Packet, JID) ->

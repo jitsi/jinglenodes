@@ -7,7 +7,7 @@ public class TrackerEntry {
     }
 
     public enum Policy {
-        _public, _roster, _domain;
+        _public, _roster;
 
         public String toString() {
             return this.name().substring(1);

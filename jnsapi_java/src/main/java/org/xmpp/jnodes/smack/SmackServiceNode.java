@@ -41,7 +41,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
 
     public SmackServiceNode(final String server, final int port, final long timeout) {
         final ConnectionConfiguration conf = new ConnectionConfiguration(server, port);
-        conf.setSASLAuthenticationEnabled(false);
+        conf.setSASLAuthenticationEnabled(true);
         conf.setSecurityMode(ConnectionConfiguration.SecurityMode.disabled);
         connection = new XMPPConnection(conf);
         this.timeout = timeout;

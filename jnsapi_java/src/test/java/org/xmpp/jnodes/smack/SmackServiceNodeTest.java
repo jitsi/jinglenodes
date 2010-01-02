@@ -19,7 +19,7 @@ public class SmackServiceNodeTest extends TestCase {
 
         LocalIPResolver.setOverrideIp("127.0.0.1");
 
-        final String server = "localhost";
+        final String server = "zero";
         final int port = 5222;
         final String user1 = "user1";
         final String pass1 = "user1";
@@ -35,9 +35,9 @@ public class SmackServiceNodeTest extends TestCase {
 
         final SmackServiceNode ssn3 = new SmackServiceNode(server, port, timeout);
 
-        ssn3.connect(user3, pass3, true, Roster.SubscriptionMode.accept_all);
-        ssn2.connect(user2, pass2, true, Roster.SubscriptionMode.accept_all);
-        ssn1.connect(user1, pass1, true, Roster.SubscriptionMode.accept_all);
+        ssn3.connect(user3, pass3, false, Roster.SubscriptionMode.accept_all);
+        ssn2.connect(user2, pass2, false, Roster.SubscriptionMode.accept_all);
+        ssn1.connect(user1, pass1, false, Roster.SubscriptionMode.accept_all);
 
         ssn1.getConnection().getRoster().createEntry(ssn2.getConnection().getUser().split("/")[0], "test", new String[]{});
         ssn2.getConnection().getRoster().createEntry(ssn3.getConnection().getUser().split("/")[0], "test", new String[]{});
@@ -94,7 +94,7 @@ public class SmackServiceNodeTest extends TestCase {
             ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "p" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
         }
         for (int i = 0; i < unk; i++) {
-            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._domain, "d" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
+            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "d" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
         }
         for (int i = 0; i < ros; i++) {
             ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._roster, "r" + String.valueOf(i), JingleChannelIQ.Protocol.udp));

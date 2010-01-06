@@ -293,7 +293,45 @@ public class RelayChannelTest extends TestCase {
                     e.printStackTrace();
                 }
             }
+    }
 
+    public void testSocketPerformanceConcurrent() {
+        int max = 100;
+        int t = 10;
+        final List<List<SelDatagramChannel>> lists = new ArrayList<List<SelDatagramChannel>>();
+
+        for (int i = 0; i < t; i++) {
+            lists.add(new ArrayList<SelDatagramChannel>());
+        }
+
+        int r = 0;
+        for (int j = 0; j < max; j++)
+            for (int i = 0; i < max; i++) {
+                try {
+                    SelDatagramChannel c = SelDatagramChannel.open(null, new InetSocketAddress(localIP, i + 20000 + (j * max)));
+                    lists.get(r++).add(c);
+                    if (r >= t) {
+                        r = 0;
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        for (int i = 0; i < t; i++) {
+            final int tt = t;
+            executorService.submit(new Runnable() {
+                public void run() {
+                    for (final SelDatagramChannel c : lists.get(tt)) {
+                        try {
+                            c.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            });
+        }
     }
 
     public static void main(String args[]) {

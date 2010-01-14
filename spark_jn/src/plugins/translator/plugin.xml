@@ -1,0 +1,11 @@
+<!-- Google Plugin Structure -->
+<plugin>
+    <name>Translator Plugin</name>
+    <class>org.jivesoftware.spark.translator.TranslatorPlugin</class>
+    <author>Jive Software</author>
+    <version>1.2</version>
+    <homePage>http://www.jivesoftware.com</homePage>
+    <description>Translates instant messages between users using Google Translation Service.</description>
+    <email>spark@jivesoftware.com</email>
+    <minSparkVersion>2.0.2</minSparkVersion>
+</plugin>

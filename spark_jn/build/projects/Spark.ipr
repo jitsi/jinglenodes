@@ -423,13 +423,13 @@
   </component>
   <component name="ProjectFileVersion" converted="true" />
   <component name="ProjectKey">
-    <option name="state" value="http://svn.igniterealtime.org/svn/repos/spark/trunk/build/projects/Spark.ipr" />
+    <option name="state" value="https://jinglenodes.googlecode.com/svn/trunk/spark_jn/build/projects/Spark.ipr" />
   </component>
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/../../src/plugins/jingle/build/projects/JinglePlugin.iml" filepath="$PROJECT_DIR$/../../src/plugins/jingle/build/projects/JinglePlugin.iml" />
       <module fileurl="file://$PROJECT_DIR$/Spark.iml" filepath="$PROJECT_DIR$/Spark.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../../../jingleNodes/trunk/jnsapi_java/jnsapi.iml" filepath="$PROJECT_DIR$/../../../jingleNodes/trunk/jnsapi_java/jnsapi.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../../jnsapi_java/jnsapi.iml" filepath="$PROJECT_DIR$/../../../jnsapi_java/jnsapi.iml" />
     </modules>
   </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_1_5" assert-keyword="true" jdk-15="true" project-jdk-name="1.6" project-jdk-type="JavaSDK" />
@@ -453,6 +453,7 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="" />
     <mapping directory="$PROJECT_DIR$/../../../jingleNodes/trunk/jnsapi_java" vcs="svn" />
+    <mapping directory="$PROJECT_DIR$/../../../jnsapi_java" vcs="svn" />
     <mapping directory="$PROJECT_DIR$/../.." vcs="svn" />
   </component>
   <component name="WebServicesPlugin" addRequiredLibraries="true" />

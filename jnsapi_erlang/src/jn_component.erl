@@ -125,8 +125,8 @@ process_iq(XmppCom, "get", IQ, _, _, _, _) ->
 
 get_candidate_elem(Host, A, B) ->
 	Raw_Elem = exmpp_xml:element(?NS_CHANNEL,?NAME_CHANNEL),
-        Elem_A = exmpp_xml:set_attribute(Raw_Elem, "porta", A),
-        Elem_B = exmpp_xml:set_attribute(Elem_A, "portb", B),
+        Elem_A = exmpp_xml:set_attribute(Raw_Elem, "localport", A),
+        Elem_B = exmpp_xml:set_attribute(Elem_A, "remoteport", B),
 	exmpp_xml:set_attribute(Elem_B,"host", Host).
 
 %% Reply Stats

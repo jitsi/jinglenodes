@@ -151,7 +151,6 @@ allocate_relay(ChannelMonitor, U, I, Tries) ->
      end.
 
 check_relay(#relay{pid= PID, user=U}, Timeout) ->
-	io:format("Checking: ~p~n", [PID]),
 	T = gen_server:call(PID, get_timestamp),	
 	Delta = timer:now_diff(now(), T)/1000,
 	if
@@ -178,10 +177,9 @@ scheduleChannelPurge(Period, Relays, Timeout) -> spawn(fun () -> schedule(Period
 schedule(Period, Relays, Timeout) ->
     receive
         NewRelay -> 
-		io:format("Relay Added: ~p~n", [NewRelay]),
+		?INFO_MSG("Relay Added: ~p~n", [NewRelay]),
 		schedule(Period, [NewRelay | Relays], Timeout)
     after Period ->
-        io:format("Opened Relays:~p~n", [Relays]),
 	Remain = check_relays(Relays, Timeout),
         schedule(Period, Remain, Timeout)
     end.

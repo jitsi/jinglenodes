@@ -74,11 +74,6 @@ loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSecon
     receive
         stop ->
             exmpp_component:stop(XmppCom);
-        %% If we receive a message, we reply with the same message
-        Record = #received_packet{packet_type=message, raw_packet=Packet} ->
-	    ?INFO_MSG("Message Received: ", [Record]),
-            process_message(XmppCom, Packet, JID),
-            loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds);
 	Record = #received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ} ->
 	    ?INFO_MSG("IQ Request: ", [Record]),
 	    process_iq(XmppCom, Type, IQ, PubIP,exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)),JID, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds),
@@ -133,15 +128,6 @@ get_candidate_elem(Host, A, B) ->
         Elem_A = exmpp_xml:set_attribute(Raw_Elem, "localport", A),
         Elem_B = exmpp_xml:set_attribute(Elem_A, "remoteport", B),
 	exmpp_xml:set_attribute(Elem_B,"host", Host).
-
-%% Reply Stats
-process_message(XmppCom, Packet, JID) ->
-    From = exmpp_xml:get_attribute(Packet, from, <<"unknown">>),
-    To = exmpp_xml:get_attribute(Packet, to, JID),
-    Tmp = exmpp_xml:set_attribute(Packet, from, To),
-    Tmp2 = exmpp_xml:set_attribute(Tmp, to, From),
-    NewPacket = exmpp_xml:remove_attribute(Tmp2, id),
-    exmpp_component:send_packet(XmppCom, NewPacket).
 
 is_allowed(_, []) -> true;
 is_allowed(Domain, WhiteDomain) -> [S || S<-WhiteDomain, S == Domain] /= [].

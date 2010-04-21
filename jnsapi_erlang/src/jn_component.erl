@@ -76,11 +76,11 @@ loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSecon
         stop ->
             exmpp_component:stop(XmppCom);
 	Record = #received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ} ->
-	    ?INFO_MSG("IQ Request: ", [Record]),
+	    ?INFO_MSG("IQ Request: ~p~n", [Record]),
 	    process_iq(XmppCom, Type, IQ, PubIP,exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)),JID, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds),
 	    loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds);
 	Record ->
-            ?INFO_MSG("Unknown Request: ", [Record]),
+            ?INFO_MSG("Unknown Request: ~p~n", [Record]),
             loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds)
     end.
 
@@ -117,7 +117,6 @@ process_iq(XmppCom, "get", IQ, _, ?NS_JINGLE_NODES, JID, _, _, _, _) ->
 	Relay = exmpp_xml:element(undefined, 'relay', [exmpp_xml:attribute('policy',"public"), exmpp_xml:attribute('protocol', "udp"), exmpp_xml:attribute('address', JID)], []),
 	Services = exmpp_xml:element(?NS_JINGLE_NODES, ?NAME_SERVICES, [],[Relay]),
 	Result = exmpp_iq:result(IQ, Services),
-	io:format("~p~n", [Result]),
 	exmpp_component:send_packet(XmppCom, Result);
 
 process_iq(XmppCom, "get", IQ, _, _, _, _, _, _, _) ->
@@ -140,7 +139,7 @@ is_allowed(_, Domain, WhiteDomain) -> lists:any(fun(S) -> S== Domain end, WhiteD
 
 allocate_relay(ChannelMonitor, U) -> allocate_relay(ChannelMonitor, U, 10000,10).
 allocate_relay(_, U, _, 0) -> 
-	 ?ERROR_MSG("Could Not Allocate Port for : ~p", [U]),
+	 ?ERROR_MSG("Could Not Allocate Port for : ~p~n", [U]),
 	{error, null};
 allocate_relay(ChannelMonitor, U, I, Tries) ->
      case udp_relay:start(I, I+2) of
@@ -155,7 +154,7 @@ check_relay(#relay{pid= PID, user=U}, Timeout) ->
 	Delta = timer:now_diff(now(), T)/1000,
 	if
 	Delta > Timeout ->
-		?INFO_MSG("Channel Killed: ", [U]),
+		?INFO_MSG("Channel Killed: ~p~n", [U]),
 		exit(PID, kill),
 		removed;
 	true -> 

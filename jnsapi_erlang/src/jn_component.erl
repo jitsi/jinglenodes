@@ -6,7 +6,7 @@
 %%%		* UDP Relay Services
 %%%
 %%% Created : 01 Nov 2009 by Thiago Camargo <barata7@gmail.com>
-%%% Example Usage: jn_component:start("jn.localhost", "secret", "localhost", 8888, "127.0.0.1", 60000, ["gmail.com","xmpp.org"], 6, 60).
+%%% Example Usage: jn_component:start("jn.localhost", "secret", "localhost", 8888, "127.0.0.1", 60000, "gmail.com,xmpp.org", 6, 60).
 %%%-------------------------------------------------------------------
 
 -module(jn_component).
@@ -39,7 +39,7 @@
 start([JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds]) ->
            spawn(?MODULE, init, [JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds]).
 
-start(JID, Pass, Server, Port, PubIP, ChannelTimeout,WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
+start(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
 	   spawn(?MODULE, init, [JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds]).
 
 stop(JNComPid) ->
@@ -62,7 +62,6 @@ init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, 
             [{disc_only_copies, [node()]},
              {type, set},
              {attributes, record_info(fields, jn_tracker_service)}]),    
-    mod_monitor:init(),
     application:start(exmpp),
     XmppCom = exmpp_component:start(),
     exmpp_component:auth(XmppCom, JID, Pass),
@@ -75,9 +74,9 @@ loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSecon
     receive
         stop ->
             exmpp_component:stop(XmppCom);
-	Record = #received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ} ->
+	Record = #received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ, from=From} ->
 	    ?INFO_MSG("IQ Request: ~p~n", [Record]),
-	    process_iq(XmppCom, Type, IQ, PubIP,exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)),JID, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds),
+	    process_iq(XmppCom, Type, IQ, From, PubIP,exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)),JID, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds),
 	    loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds);
 	Record ->
             ?INFO_MSG("Unknown Request: ~p~n", [Record]),
@@ -85,11 +84,11 @@ loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSecon
     end.
 
 %% Create Channel and return details
-process_iq(XmppCom, "get", IQ, PubIP, ?NS_CHANNEL, _, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
-    P = exmpp_xml:get_attribute(exmpp_iq:get_payload(IQ),"from","server"),
-    Permitted = is_allowed(P, WhiteDomain) orelse mod_monitor:accept(P, MaxPerPeriod, PeriodSeconds),	
+process_iq(XmppCom, "get", IQ, From, PubIP, ?NS_CHANNEL, _, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
+    ?INFO_MSG("Channel Request From: ~p~n", [From]),
+    Permitted = is_allowed(From, WhiteDomain) orelse mod_monitor:accept(From, MaxPerPeriod, PeriodSeconds),	
 	if Permitted ->
-    		case allocate_relay(ChannelMonitor, P) of
+    		case allocate_relay(ChannelMonitor, From) of
 		{A, B} ->
 			Result = exmpp_iq:result(IQ,get_candidate_elem(PubIP, A, B)),
 			exmpp_component:send_packet(XmppCom, Result);
@@ -102,7 +101,7 @@ process_iq(XmppCom, "get", IQ, PubIP, ?NS_CHANNEL, _, ChannelMonitor, WhiteDomai
                 exmpp_component:send_packet(XmppCom, Error)		
 	end;
 
-process_iq(XmppCom, "get", IQ, _, ?NS_DISCO_INFO, _, _, _, _, _) ->
+process_iq(XmppCom, "get", IQ, _, _, ?NS_DISCO_INFO, _, _, _, _, _) ->
         Identity = exmpp_xml:element(?NS_DISCO_INFO, 'identity', [exmpp_xml:attribute("category", <<"proxy">>),
                                                       exmpp_xml:attribute("type", <<"relay">>),
                                                       exmpp_xml:attribute("name", <<"Jingle Nodes Relay">>)
@@ -113,13 +112,13 @@ process_iq(XmppCom, "get", IQ, _, ?NS_DISCO_INFO, _, _, _, _, _) ->
         Result = exmpp_iq:result(IQ, exmpp_xml:element(?NS_DISCO_INFO, 'query', [], [Identity, IQRegisterFeature1, IQRegisterFeature2])),
         exmpp_component:send_packet(XmppCom, Result);
 
-process_iq(XmppCom, "get", IQ, _, ?NS_JINGLE_NODES, JID, _, _, _, _) ->
+process_iq(XmppCom, "get", IQ, _, _, ?NS_JINGLE_NODES, JID, _, _, _, _) ->
 	Relay = exmpp_xml:element(undefined, 'relay', [exmpp_xml:attribute('policy',"public"), exmpp_xml:attribute('protocol', "udp"), exmpp_xml:attribute('address', JID)], []),
 	Services = exmpp_xml:element(?NS_JINGLE_NODES, ?NAME_SERVICES, [],[Relay]),
 	Result = exmpp_iq:result(IQ, Services),
 	exmpp_component:send_packet(XmppCom, Result);
 
-process_iq(XmppCom, "get", IQ, _, _, _, _, _, _, _) ->
+process_iq(XmppCom, "get", IQ, _, _, _, _, _, _, _, _) ->
 		    Error = exmpp_iq:error(IQ,'feature-not-implemented'),
 		    exmpp_component:send_packet(XmppCom, Error).
 
@@ -131,8 +130,11 @@ get_candidate_elem(Host, A, B) ->
 
 is_allowed(_, []) -> true;
 is_allowed(Jid, WhiteDomain) ->
+	?INFO_MSG("Is allowed Request From: ~p ~p~n", [Jid, exmpp_jid:is_jid(Jid)]),
 	case exmpp_jid:is_jid(Jid) of
-	true -> is_allowed(Jid, exmpp_jid:domain(Jid), WhiteDomain);
+	true -> 
+		?INFO_MSG("Is allowed From: ~p~n", [Jid]),
+		is_allowed(Jid, exmpp_jid:domain(Jid), WhiteDomain);
 	_ -> false
 	end.
 is_allowed(_, Domain, WhiteDomain) -> lists:any(fun(S) -> S== Domain end, WhiteDomain).

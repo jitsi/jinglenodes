@@ -6,7 +6,7 @@
 %%%		* UDP Relay Services
 %%%
 %%% Created : 01 Nov 2009 by Thiago Camargo <barata7@gmail.com>
-%%% Example Usage: jn_component:start("jn.localhost", "secret", "localhost", 8888, "127.0.0.1", 60000).
+%%% Example Usage: jn_component:start("jn.localhost", "secret", "localhost", 8888, "127.0.0.1", 60000, ["gmail.com","xmpp.org"], 6, 60).
 %%%-------------------------------------------------------------------
 
 -module(jn_component).
@@ -62,13 +62,14 @@ init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, 
             [{disc_only_copies, [node()]},
              {type, set},
              {attributes, record_info(fields, jn_tracker_service)}]),    
+    mod_monitor:init(),
     application:start(exmpp),
     XmppCom = exmpp_component:start(),
     exmpp_component:auth(XmppCom, JID, Pass),
     _StreamId = exmpp_component:connect(XmppCom, Server, Port),
     exmpp_component:handshake(XmppCom),
     ChannelMonitor = scheduleChannelPurge(5000, [], ChannelTimeout),
-    loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds).
+    loop(XmppCom, JID, PubIP, ChannelMonitor, [list_to_binary(S) || S <- WhiteDomain], MaxPerPeriod, PeriodSeconds).
 
 loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
     receive
@@ -86,7 +87,7 @@ loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSecon
 %% Create Channel and return details
 process_iq(XmppCom, "get", IQ, PubIP, ?NS_CHANNEL, _, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
     P = exmpp_xml:get_attribute(exmpp_iq:get_payload(IQ),"from","server"),
-    Permitted = is_allowed("D", WhiteDomain) orelse mod_monitor:accept(P, MaxPerPeriod, PeriodSeconds),
+    Permitted = is_allowed(P, WhiteDomain) orelse mod_monitor:accept(P, MaxPerPeriod, PeriodSeconds),	
 	if Permitted ->
     		case allocate_relay(ChannelMonitor, P) of
 		{A, B} ->
@@ -130,7 +131,12 @@ get_candidate_elem(Host, A, B) ->
 	exmpp_xml:set_attribute(Elem_B,"host", Host).
 
 is_allowed(_, []) -> true;
-is_allowed(Domain, WhiteDomain) -> [S || S<-WhiteDomain, S == Domain] /= [].
+is_allowed(Jid, WhiteDomain) ->
+	case exmpp_jid:is_jid(Jid) of
+	true -> is_allowed(Jid, exmpp_jid:domain(Jid), WhiteDomain);
+	_ -> false
+	end.
+is_allowed(_, Domain, WhiteDomain) -> lists:any(fun(S) -> S== Domain end, WhiteDomain).
 
 allocate_relay(ChannelMonitor, U) -> allocate_relay(ChannelMonitor, U, 10000,10).
 allocate_relay(_, U, _, 0) -> 

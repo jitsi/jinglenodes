@@ -69,7 +69,7 @@ init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, 
     _StreamId = exmpp_component:connect(XmppCom, Server, Port),
     exmpp_component:handshake(XmppCom),
     ChannelMonitor = scheduleChannelPurge(5000, [], ChannelTimeout),
-    loop(XmppCom, JID, PubIP, ChannelMonitor, [list_to_binary(S) || S <- WhiteDomain], MaxPerPeriod, PeriodSeconds).
+    loop(XmppCom, JID, PubIP, ChannelMonitor, [list_to_binary(string:tokens(S, ",")) || S <- WhiteDomain], MaxPerPeriod, PeriodSeconds).
 
 loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
     receive

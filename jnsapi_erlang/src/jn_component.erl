@@ -12,7 +12,7 @@
 -module(jn_component).
 
 -define(NS_CHANNEL,'http://jabber.org/protocol/jinglenodes#channel').
--define(NAME_CHANNEL,'candidate').
+-define(NAME_CHANNEL,'channel').
 -define(NS_JINGLE_NODES_s,"http://jabber.org/protocol/jinglenodes").
 -define(NS_JINGLE_NODES,'http://jabber.org/protocol/jinglenodes').
 -define(NAME_SERVICES,'services').
@@ -86,7 +86,7 @@ loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSecon
 %% Create Channel and return details
 process_iq(XmppCom, "get", IQ, From, PubIP, ?NS_CHANNEL, _, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
     ?INFO_MSG("Channel Request From: ~p~n", [From]),
-    Permitted = is_allowed(From, WhiteDomain) orelse mod_monitor:accept(From, MaxPerPeriod, PeriodSeconds),	
+    Permitted = is_allowed(From, WhiteDomain) andalso mod_monitor:accept(From, MaxPerPeriod, PeriodSeconds),	
 	if Permitted ->
     		case allocate_relay(ChannelMonitor, From) of
 		{A, B} ->
@@ -129,14 +129,14 @@ get_candidate_elem(Host, A, B) ->
 	exmpp_xml:set_attribute(Elem_B,"host", Host).
 
 is_allowed(_, []) -> true;
-is_allowed(Jid, WhiteDomain) ->
-	?INFO_MSG("Is allowed Request From: ~p ~p~n", [Jid, exmpp_jid:is_jid(Jid)]),
-	case exmpp_jid:is_jid(Jid) of
-	true -> 
-		?INFO_MSG("Is allowed From: ~p~n", [Jid]),
-		is_allowed(Jid, exmpp_jid:domain(Jid), WhiteDomain);
-	_ -> false
-	end.
+is_allowed({_,D,_}, WhiteDomain) ->
+	?INFO_MSG("Is allowed Request From: ~p ~p~n", [D, exmpp_jid:is_jid(D)]),
+%%	case exmpp_jid:is_jid(Jid) of
+%%	true -> 
+		?INFO_MSG("Is allowed From: ~p~n", [D]),
+		is_allowed(D, D, WhiteDomain).
+%%	_ -> false
+%%	end.
 is_allowed(_, Domain, WhiteDomain) -> lists:any(fun(S) -> S== Domain end, WhiteDomain).
 
 allocate_relay(ChannelMonitor, U) -> allocate_relay(ChannelMonitor, U, 10000,10).

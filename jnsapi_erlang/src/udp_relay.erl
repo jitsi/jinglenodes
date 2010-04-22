@@ -44,6 +44,11 @@ start(P1, P2) ->
 %% gen_server callbacks
 %%====================================================================
 init([Port1, Port2]) ->
+	init([Port1, Port2], 5).
+init([Port1, Port2], 0) -> 
+	?ERROR_MSG("unable to open port: ~p ~p", [Port1, Port2]),
+        {stop, Port1};
+init([Port1, Port2], T) ->
     case {gen_udp:open(Port1, ?SOCKOPTS),
 	  gen_udp:open(Port1+1, ?SOCKOPTS),
 	  gen_udp:open(Port2, ?SOCKOPTS),
@@ -53,7 +58,7 @@ init([Port1, Port2]) ->
 	    {ok, #state{local_sock = Local_Sock, local_sock_c = Local_Sock_C, remote_sock = Remote_Sock, remote_sock_c = Remote_Sock_C, lastTimestamp= now()}};
 	Errs ->
 	    ?ERROR_MSG("unable to open port: ~p", [Errs]),
-	    {stop, Errs}
+	    init([Port1, Port2], T-1)
     end.
 
 handle_call(get_timestamp, _From, State) ->

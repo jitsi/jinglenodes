@@ -45,13 +45,12 @@ start(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod,
 stop(JNComPid) ->
     JNComPid ! stop.
 
-init(JID, Pass, Server, [_|_]=Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
-	  {ok, [NPort], _} = io_lib:fread("~u",Port),
-	  init(JID, Pass, Server, NPort, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds);
-
-init(JID, Pass, Server, Port, PubIP, [_|_]=ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
-	  {ok, [NTimeout], _} = io_lib:fread("~u", ChannelTimeout),
-	  init(JID, Pass, Server, Port, PubIP, NTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds);
+init(JID, Pass, Server, [_|_]=Port, PubIP, [_|_]=ChannelTimeout, WhiteDomain, [_|_]=MaxPerPeriod, [_|_]=PeriodSeconds) ->
+	{ok, [NPort], _} = io_lib:fread("~u",Port),
+	{ok, [NTimeout], _} = io_lib:fread("~u", ChannelTimeout),
+	{ok, [NMaxPerPeriod], _} = io_lib:fread("~u",MaxPerPeriod),
+	{ok, [NPeriodSeconds], _} = io_lib:fread("~u",PeriodSeconds),
+	init(JID, Pass, Server, NPort, PubIP, NTimeout, WhiteDomain, NMaxPerPeriod, NPeriodSeconds);
 
 init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
     mnesia:create_table(jn_relay_service,
@@ -65,23 +64,32 @@ init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, 
     application:start(exmpp),
     mod_monitor:init(),
     XmppCom = exmpp_component:start(),
+    make_connection(XmppCom, JID, Pass, Server, Port),
+    ChannelMonitor = scheduleChannelPurge(5000, [], ChannelTimeout),
+    loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, [list_to_binary(S) || S <- string:tokens(WhiteDomain, ",")], MaxPerPeriod, PeriodSeconds).
+
+make_connection(XmppCom, JID, Pass, Server, Port) ->
     exmpp_component:auth(XmppCom, JID, Pass),
     _StreamId = exmpp_component:connect(XmppCom, Server, Port),
-    exmpp_component:handshake(XmppCom),
-    ChannelMonitor = scheduleChannelPurge(5000, [], ChannelTimeout),
-    loop(XmppCom, JID, PubIP, ChannelMonitor, [list_to_binary(S) || S <- string:tokens(WhiteDomain, ",")], MaxPerPeriod, PeriodSeconds).
+    exmpp_component:handshake(XmppCom).
 
-loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
+loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
     receive
         stop ->
             exmpp_component:stop(XmppCom);
 	Record = #received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ, from=From} ->
 	    ?INFO_MSG("IQ Request: ~p~n", [Record]),
 	    process_iq(XmppCom, Type, IQ, From, PubIP,exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)),JID, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds),
-	    loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds);
+	    loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds);
+	{_, tcp_closed} ->
+	    exmpp_component:stop(XmppCom),
+	    ?INFO_MSG("Connection Closed. Trying to Reconnect...~n", [make_connection(XmppCom, JID, Pass, Server, Port)]),
+	    make_connection(XmppCom, JID, Pass, Server, Port),
+	    ?INFO_MSG("Reconnected.~n", []),
+	    loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds);
 	Record ->
             ?INFO_MSG("Unknown Request: ~p~n", [Record]),
-            loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds)
+            loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds)
     end.
 
 %% Create Channel and return details

@@ -47,7 +47,7 @@ init([Port1, Port2]) ->
 	init([Port1, Port2], 5).
 init([Port1, Port2], 0) -> 
 	?ERROR_MSG("unable to open port: ~p ~p", [Port1, Port2]),
-        {stop, Port1};
+        {stop};
 init([Port1, Port2], T) ->
     case {gen_udp:open(Port1, ?SOCKOPTS),
 	  gen_udp:open(Port1+1, ?SOCKOPTS),

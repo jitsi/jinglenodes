@@ -63,6 +63,7 @@ init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, 
              {type, set},
              {attributes, record_info(fields, jn_tracker_service)}]),    
     application:start(exmpp),
+    mod_monitor:init(),
     XmppCom = exmpp_component:start(),
     exmpp_component:auth(XmppCom, JID, Pass),
     _StreamId = exmpp_component:connect(XmppCom, Server, Port),
@@ -85,19 +86,21 @@ loop(XmppCom, JID, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSecon
 
 %% Create Channel and return details
 process_iq(XmppCom, "get", IQ, From, PubIP, ?NS_CHANNEL, _, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
-    ?INFO_MSG("Channel Request From: ~p~n", [From]),
     Permitted = is_allowed(From, WhiteDomain) andalso mod_monitor:accept(From, MaxPerPeriod, PeriodSeconds),	
-	if Permitted ->
+	if Permitted == true ->
     		case allocate_relay(ChannelMonitor, From) of
 		{A, B} ->
+			?INFO_MSG("Allocated Port for : ~p~n", [From]),
 			Result = exmpp_iq:result(IQ,get_candidate_elem(PubIP, A, B)),
 			exmpp_component:send_packet(XmppCom, Result);
 		_ ->
-			Error = exmpp_iq:error(IQ),
+			?ERROR_MSG("Could Not Allocate Port for : ~p~n", [From]),
+			Error = exmpp_iq:error_without_original(IQ, 'internal-server-error'),
 			exmpp_component:send_packet(XmppCom, Error)
 		end;
 	true -> 
-		Error = exmpp_iq:error(IQ),
+		?ERROR_MSG("Could Not Allocate Port for : ~p~n", [From]),
+		Error = exmpp_iq:error_without_original(IQ, 'policy-violation'),
                 exmpp_component:send_packet(XmppCom, Error)		
 	end;
 
@@ -130,14 +133,9 @@ get_candidate_elem(Host, A, B) ->
 
 is_allowed(_, []) -> true;
 is_allowed({_,D,_}, WhiteDomain) ->
-	?INFO_MSG("Is allowed Request From: ~p ~p~n", [D, exmpp_jid:is_jid(D)]),
-%%	case exmpp_jid:is_jid(Jid) of
-%%	true -> 
-		?INFO_MSG("Is allowed From: ~p~n", [D]),
-		is_allowed(D, D, WhiteDomain).
-%%	_ -> false
-%%	end.
-is_allowed(_, Domain, WhiteDomain) -> lists:any(fun(S) -> S== Domain end, WhiteDomain).
+	is_allowed(D, WhiteDomain);
+is_allowed(Domain, WhiteDomain) -> 
+	lists:any(fun(S) -> S == Domain end, WhiteDomain).
 
 allocate_relay(ChannelMonitor, U) -> allocate_relay(ChannelMonitor, U, 10000,10).
 allocate_relay(_, U, _, 0) -> 

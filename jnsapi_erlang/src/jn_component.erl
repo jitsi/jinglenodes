@@ -30,7 +30,7 @@
 -include_lib("exmpp/include/exmpp_client.hrl").
 
 -export([start/1, start/9, stop/1]).
--export([init/9, is_allowed/2]).
+-export([init/9, cover_test/0]).
 
 -record(relay, {pid, user}).
 -record(jn_relay_service, {address, xml}).
@@ -63,30 +63,43 @@ init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, 
              {attributes, record_info(fields, jn_tracker_service)}]),    
     application:start(exmpp),
     mod_monitor:init(),
-    XmppCom = exmpp_component:start(),
-    make_connection(XmppCom, JID, Pass, Server, Port),
     ChannelMonitor = scheduleChannelPurge(5000, [], ChannelTimeout),
+    {_, XmppCom} = make_connection(JID, Pass, Server, Port),
     loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, [list_to_binary(S) || S <- string:tokens(WhiteDomain, ",")], MaxPerPeriod, PeriodSeconds).
 
-make_connection(XmppCom, JID, Pass, Server, Port) ->
+make_connection(JID, Pass, Server, Port) -> 
+	XmppCom = exmpp_component:start(),
+	make_connection(XmppCom, JID, Pass, Server, Port, 20).
+make_connection(XmppCom, JID, Pass, Server, Port, 0) -> 
+	exmpp_component:stop(XmppCom),
+	make_connection(JID, Pass, Server, Port);
+make_connection(XmppCom, JID, Pass, Server, Port, Tries) ->
+    ?INFO_MSG("Connecting: ~p Tries Left~n",[Tries]),
     exmpp_component:auth(XmppCom, JID, Pass),
-    _StreamId = exmpp_component:connect(XmppCom, Server, Port),
-    exmpp_component:handshake(XmppCom).
+    try exmpp_component:connect(XmppCom, Server, Port) of
+	R -> exmpp_component:handshake(XmppCom),
+		?INFO_MSG("Connected.~n",[]),
+		{R, XmppCom}
+	catch
+		Exception -> ?INFO_MSG("Exception: ~p~n",[Exception]),
+		timer:sleep((20-Tries) * 200),
+		make_connection(XmppCom, JID, Pass, Server, Port, Tries-1)
+    end.
 
 loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
     receive
         stop ->
-            exmpp_component:stop(XmppCom);
+            ?INFO_MSG("Component Stopped.~n",[]),
+	    exmpp_component:stop(XmppCom);
 	Record = #received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ, from=From} ->
 	    ?INFO_MSG("IQ Request: ~p~n", [Record]),
 	    process_iq(XmppCom, Type, IQ, From, PubIP,exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)),JID, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds),
 	    loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds);
 	{_, tcp_closed} ->
-	    exmpp_component:stop(XmppCom),
-	    ?INFO_MSG("Connection Closed. Trying to Reconnect...~n", [make_connection(XmppCom, JID, Pass, Server, Port)]),
-	    make_connection(XmppCom, JID, Pass, Server, Port),
+	    ?INFO_MSG("Connection Closed. Trying to Reconnect...~n", []),
+	    {_, NewXmppCom} = make_connection(JID, Pass, Server, Port),
 	    ?INFO_MSG("Reconnected.~n", []),
-	    loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds);
+	    loop(NewXmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds);
 	Record ->
             ?INFO_MSG("Unknown Request: ~p~n", [Record]),
             loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds)
@@ -145,7 +158,7 @@ is_allowed({_,D,_}, WhiteDomain) ->
 is_allowed(Domain, WhiteDomain) -> 
 	lists:any(fun(S) -> S == Domain end, WhiteDomain).
 
-allocate_relay(ChannelMonitor, U) -> allocate_relay(ChannelMonitor, U, 10000,10).
+allocate_relay(ChannelMonitor, U) -> allocate_relay(ChannelMonitor, U, 10000, 100).
 allocate_relay(_, U, _, 0) -> 
 	 ?ERROR_MSG("Could Not Allocate Port for : ~p~n", [U]),
 	{error, null};
@@ -190,3 +203,18 @@ schedule(Period, Relays, Timeout) ->
 	Remain = check_relays(Relays, Timeout),
         schedule(Period, Remain, Timeout)
     end.
+
+cover_test() ->
+	%%cover_start(),
+	cover_channels().
+
+cover_start() ->
+	jn_component:start("jn.localhost", "secret", "localhost", "8888", "127.0.0.1" , "60000", "localhost", "2", "60").
+
+cover_channels() -> 
+	ChannelMonitor = scheduleChannelPurge(5000, [], 10000),
+	cover_channels(ChannelMonitor, 10).
+cover_channels(_, 0) -> ok;
+cover_channels(ChannelMonitor, T) ->		
+	allocate_relay(ChannelMonitor, "s"),
+	cover_channels(ChannelMonitor, T-1).

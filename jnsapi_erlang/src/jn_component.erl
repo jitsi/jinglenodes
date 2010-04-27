@@ -65,7 +65,7 @@ init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, 
     mod_monitor:init(),
     ChannelMonitor = scheduleChannelPurge(5000, [], ChannelTimeout),
     {_, XmppCom} = make_connection(JID, Pass, Server, Port),
-    loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, [list_to_binary(S) || S <- string:tokens(WhiteDomain, ",")], MaxPerPeriod, PeriodSeconds).
+    loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, [list_to_binary(S) || S <- string:tokens(WhiteDomain, ",")], MaxPerPeriod, PeriodSeconds, {10000}}).
 
 make_connection(JID, Pass, Server, Port) -> 
 	XmppCom = exmpp_component:start(),
@@ -86,27 +86,27 @@ make_connection(XmppCom, JID, Pass, Server, Port, Tries) ->
 		make_connection(XmppCom, JID, Pass, Server, Port, Tries-1)
     end.
 
-loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
+loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds, State) ->
     receive
         stop ->
             ?INFO_MSG("Component Stopped.~n",[]),
 	    exmpp_component:stop(XmppCom);
 	Record = #received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ, from=From} ->
 	    ?INFO_MSG("IQ Request: ~p~n", [Record]),
-	    process_iq(XmppCom, Type, IQ, From, PubIP,exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)),JID, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds),
-	    loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds);
+	    process_iq(XmppCom, Type, IQ, From, PubIP,exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)),JID, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds, State),
+	    loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds, State);
 	{_, tcp_closed} ->
 	    ?INFO_MSG("Connection Closed. Trying to Reconnect...~n", []),
 	    {_, NewXmppCom} = make_connection(JID, Pass, Server, Port),
 	    ?INFO_MSG("Reconnected.~n", []),
-	    loop(NewXmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds);
+	    loop(NewXmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds, State);
 	Record ->
             ?INFO_MSG("Unknown Request: ~p~n", [Record]),
-            loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds)
+            loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds, State)
     end.
 
 %% Create Channel and return details
-process_iq(XmppCom, "get", IQ, From, PubIP, ?NS_CHANNEL, _, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds) ->
+process_iq(XmppCom, "get", IQ, From, PubIP, ?NS_CHANNEL, _, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds, {Port}) ->
     Permitted = is_allowed(From, WhiteDomain) andalso mod_monitor:accept(From, MaxPerPeriod, PeriodSeconds),	
 	if Permitted == true ->
     		case allocate_relay(ChannelMonitor, From) of
@@ -125,7 +125,7 @@ process_iq(XmppCom, "get", IQ, From, PubIP, ?NS_CHANNEL, _, ChannelMonitor, Whit
                 exmpp_component:send_packet(XmppCom, Error)		
 	end;
 
-process_iq(XmppCom, "get", IQ, _, _, ?NS_DISCO_INFO, _, _, _, _, _) ->
+process_iq(XmppCom, "get", IQ, _, _, ?NS_DISCO_INFO, _, _, _, _, _, _) ->
         Identity = exmpp_xml:element(?NS_DISCO_INFO, 'identity', [exmpp_xml:attribute("category", <<"proxy">>),
                                                       exmpp_xml:attribute("type", <<"relay">>),
                                                       exmpp_xml:attribute("name", <<"Jingle Nodes Relay">>)
@@ -136,13 +136,13 @@ process_iq(XmppCom, "get", IQ, _, _, ?NS_DISCO_INFO, _, _, _, _, _) ->
         Result = exmpp_iq:result(IQ, exmpp_xml:element(?NS_DISCO_INFO, 'query', [], [Identity, IQRegisterFeature1, IQRegisterFeature2])),
         exmpp_component:send_packet(XmppCom, Result);
 
-process_iq(XmppCom, "get", IQ, _, _, ?NS_JINGLE_NODES, JID, _, _, _, _) ->
+process_iq(XmppCom, "get", IQ, _, _, ?NS_JINGLE_NODES, JID, _, _, _, _, _) ->
 	Relay = exmpp_xml:element(undefined, 'relay', [exmpp_xml:attribute('policy',"public"), exmpp_xml:attribute('protocol', "udp"), exmpp_xml:attribute('address', JID)], []),
 	Services = exmpp_xml:element(?NS_JINGLE_NODES, ?NAME_SERVICES, [],[Relay]),
 	Result = exmpp_iq:result(IQ, Services),
 	exmpp_component:send_packet(XmppCom, Result);
 
-process_iq(XmppCom, "get", IQ, _, _, _, _, _, _, _, _) ->
+process_iq(XmppCom, "get", IQ, _, _, _, _, _, _, _, _, _) ->
 		    Error = exmpp_iq:error(IQ,'feature-not-implemented'),
 		    exmpp_component:send_packet(XmppCom, Error).
 
@@ -158,16 +158,16 @@ is_allowed({_,D,_}, WhiteDomain) ->
 is_allowed(Domain, WhiteDomain) -> 
 	lists:any(fun(S) -> S == Domain end, WhiteDomain).
 
-allocate_relay(ChannelMonitor, U) -> allocate_relay(ChannelMonitor, U, 10000, 100).
-allocate_relay(_, U, _, 0) -> 
+allocate_relay(ChannelMonitor, U, State) -> allocate_relay(ChannelMonitor, U, 100, State).
+allocate_relay(_, U, _, 0, State) -> 
 	 ?ERROR_MSG("Could Not Allocate Port for : ~p~n", [U]),
-	{error, null};
-allocate_relay(ChannelMonitor, U, I, Tries) ->
-     case udp_relay:start(I, I+2) of
+	{error, State};
+allocate_relay(ChannelMonitor, U, Tries, {Port}=State) ->
+     case udp_relay:start(Port, Port+2) of
 	{ok, R} -> 
 		ChannelMonitor ! #relay{pid=R, user=U},
-		{I, I+2};
-	_ -> allocate_relay(ChannelMonitor, U, I+3, Tries-1)
+		{Port};
+	_ -> allocate_relay(ChannelMonitor, U, Tries-1, {Port})
      end.
 
 check_relay(#relay{pid= PID, user=U}, Timeout) ->

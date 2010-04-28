@@ -17,7 +17,6 @@
 -define(NS_JINGLE_NODES,'http://jabber.org/protocol/jinglenodes').
 -define(NAME_SERVICES,'services').
 -define(NS_CHANNEL_s,"http://jabber.org/protocol/jinglenodes#channel").
--define(NAME_PING, 'urn:xmpp:ping').
 
 -define(ERROR_MSG(Format, Args),
 	error_logger:error_msg("(~p:~p:~p) " ++ Format ++ "~n",
@@ -238,7 +237,7 @@ cover_test() ->
 	cover_channels().
 
 cover_channels() -> 
-	ChannelMonitor = scheduleChannelPurge(5000, [], 10000),
+	ChannelMonitor = scheduleChannelPurge(5000, [], 30000),
 	cover_channels(ChannelMonitor, 100, #port_mgr{init=10000, end_port=60000, list=[]}).
 cover_channels(_, 0, _) -> ok;
 cover_channels(ChannelMonitor, T, State) ->		

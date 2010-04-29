@@ -6,7 +6,7 @@
 %%%		* UDP Relay Services
 %%%
 %%% Created : 01 Nov 2009 by Thiago Camargo <barata7@gmail.com>
-%%% Example Usage: jn_component:start("jn.localhost", "secret", "localhost", "8888", "127.0.0.1", "60000", "gmail.com,xmpp.org", "6", "60", "10000", "60000").
+%%% Example Usage: jn_component:start(["jn.localhost", "secret", "localhost", "8888", "127.0.0.1", "60000", "localhost", "6", "60", "10000", "60000"]).
 %%%-------------------------------------------------------------------
 
 -module(jn_component).
@@ -17,19 +17,13 @@
 -define(NS_JINGLE_NODES,'http://jabber.org/protocol/jinglenodes').
 -define(NAME_SERVICES,'services').
 -define(NS_CHANNEL_s,"http://jabber.org/protocol/jinglenodes#channel").
-
--define(ERROR_MSG(Format, Args),
-	error_logger:error_msg("(~p:~p:~p) " ++ Format ++ "~n",
-			       [self(), ?MODULE, ?LINE | Args])).
-
--define(INFO_MSG(Format, Args),
-	error_logger:info_msg("(~p:~p:~p) " ++ Format ++ "~n",
-			       [self(), ?MODULE, ?LINE | Args])).
+-define(LOG_PATH, "jn_component.log").
 
 -include_lib("exmpp/include/exmpp.hrl").
 -include_lib("exmpp/include/exmpp_client.hrl").
+-include_lib("include/p1_logger.hrl").
 
--export([start/1, stop/1]).
+-export([start/1, start/11, stop/1]).
 -export([init/11, cover_test/0, create_port_list/2]).
 
 -record(relay, {pid, user}).
@@ -37,6 +31,8 @@
 -record(jn_tracker_service, {address, xml}).
 -record(port_mgr, {init, end_port, list}).
 
+start(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds, InitPort, EndPort) ->
+	start([JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds, InitPort, EndPort]).
 start([JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds, InitPort, EndPort]) ->
            spawn(?MODULE, init, [JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds, InitPort, EndPort]).
 
@@ -63,9 +59,32 @@ init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, 
              {attributes, record_info(fields, jn_tracker_service)}]), 
     application:start(exmpp),
     mod_monitor:init(),
+    init_logger(),
     ChannelMonitor = scheduleChannelPurge(5000, [], ChannelTimeout),
     {_, XmppCom} = make_connection(JID, Pass, Server, Port),
     loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, [list_to_binary(S) || S <- string:tokens(WhiteDomain, ",")], MaxPerPeriod, PeriodSeconds, #port_mgr{init=InitPort,end_port=EndPort,list=[]}).
+
+init_logger() ->
+	p1_loglevel:set(4),
+	LogPath = get_log_path(),
+	error_logger:add_report_handler(p1_logger_h, LogPath).
+
+%% It first checks for application configuration parameter 'log_path'.
+%% If not defined it checks the environment variable LOG_PATH.
+%% And if that one is neither defined, returns the default value:
+%% "ejabberd.log" in current directory.
+get_log_path() ->
+    case application:get_env(log_path) of
+        {ok, Path} ->
+            Path;
+        undefined ->
+            case os:getenv("LOG_PATH") of
+                false ->
+                    ?LOG_PATH;
+                Path ->
+                    Path
+            end
+    end.
 
 make_connection(JID, Pass, Server, Port) -> 
 	XmppCom = exmpp_component:start(),
@@ -125,7 +144,7 @@ process_iq(XmppCom, "get", IQ, From, PubIP, ?NS_CHANNEL, _, ChannelMonitor, Whit
 			{error, State}
 		end;
 	true -> 
-		?ERROR_MSG("Could Not Allocate Port for : ~p~n", [From]),
+		?ERROR_MSG("[Not Acceptable] Could Not Allocate Port for : ~p~n", [From]),
 		Error = exmpp_iq:error_without_original(IQ, 'policy-violation'),
                 exmpp_component:send_packet(XmppCom, Error),
 		{error, State}		
@@ -238,7 +257,7 @@ cover_test() ->
 
 cover_channels() -> 
 	ChannelMonitor = scheduleChannelPurge(5000, [], 30000),
-	cover_channels(ChannelMonitor, 100, #port_mgr{init=10000, end_port=60000, list=[]}).
+	cover_channels(ChannelMonitor, 50, #port_mgr{init=10000, end_port=60000, list=[]}).
 cover_channels(_, 0, _) -> ok;
 cover_channels(ChannelMonitor, T, State) ->		
 	{_, _, _, NewState} = allocate_relay(ChannelMonitor, "s", State),

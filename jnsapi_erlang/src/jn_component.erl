@@ -10,6 +10,7 @@
 %%%-------------------------------------------------------------------
 
 -module(jn_component).
+-behaviour(gen_server).
 
 -define(NS_CHANNEL,'http://jabber.org/protocol/jinglenodes#channel').
 -define(NAME_CHANNEL,'channel').
@@ -18,35 +19,56 @@
 -define(NAME_SERVICES,'services').
 -define(NS_CHANNEL_s,"http://jabber.org/protocol/jinglenodes#channel").
 -define(LOG_PATH, "jn_component.log").
+-define(SERVER, ?MODULE).
+
+-import(config).
+-import(file).
 
 -include_lib("exmpp/include/exmpp.hrl").
 -include_lib("exmpp/include/exmpp_client.hrl").
 -include_lib("include/p1_logger.hrl").
 
--export([start/1, start/11, stop/1]).
--export([init/11, cover_test/0, create_port_list/2]).
+%% API
+-export([start_link/1]).
+
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+         terminate/2, code_change/3]).
 
 -record(relay, {pid, user}).
 -record(jn_relay_service, {address, xml}).
 -record(jn_tracker_service, {address, xml}).
 -record(port_mgr, {init, end_port, list}).
+-record(state, {xmppCom, jid, pass, server, port, pubIP, channelMonitor, whiteDomain, maxPerPeriod, periodSeconds, extra}).
 
-start(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds, InitPort, EndPort) ->
-	start([JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds, InitPort, EndPort]).
-start([JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds, InitPort, EndPort]) ->
-           spawn(?MODULE, init, [JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds, InitPort, EndPort]).
+start_link(Args) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
 
-stop(JNComPid) ->
-    JNComPid ! stop.
+%%====================================================================
+%% gen_server callbacks
+%%====================================================================
 
-init(JID, Pass, Server, [_|_]=Port, PubIP, [_|_]=ChannelTimeout, WhiteDomain, [_|_]=MaxPerPeriod, [_|_]=PeriodSeconds, [_|_]=InitPort, [_|_]=EndPort) ->
-	{ok, [NPort], _} = io_lib:fread("~u",Port),
-	{ok, [NTimeout], _} = io_lib:fread("~u", ChannelTimeout),
-	{ok, [NMaxPerPeriod], _} = io_lib:fread("~u",MaxPerPeriod),
-	{ok, [NPeriodSeconds], _} = io_lib:fread("~u",PeriodSeconds),
-	{ok, [NInitPort], _} = io_lib:fread("~u",InitPort),
-	{ok, [NEndPort], _} = io_lib:fread("~u",EndPort),
-	init(JID, Pass, Server, NPort, PubIP, NTimeout, WhiteDomain, NMaxPerPeriod, NPeriodSeconds, NInitPort, NEndPort);
+%%--------------------------------------------------------------------
+%% Function: init(Args) -> {ok, State} |
+%%                         {ok, State, Timeout} |
+%%                         ignore               |
+%%                         {stop, Reason}
+%% Description: Initiates the server
+%%--------------------------------------------------------------------
+init([]) ->
+	{_, Cfg} = file:consult("./jn_component.cfg"),
+	init(	
+		get(jid, Cfg),
+		get(pass, Cfg),
+		get(server, Cfg),
+                get(port, Cfg),
+                get(public_ip, Cfg),
+                get(channel_timeout, Cfg),
+                get(whitelist, Cfg),
+                get(max_per_period, Cfg),
+                get(period_seconds, Cfg),
+                get(init_port, Cfg),
+                get(end_port, Cfg)).
 
 init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds, InitPort, EndPort) ->
     mnesia:create_table(jn_relay_service,
@@ -56,13 +78,86 @@ init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, 
     mnesia:create_table(jn_tracker_service,
             [{disc_only_copies, [node()]},
              {type, set},
-             {attributes, record_info(fields, jn_tracker_service)}]), 
+             {attributes, record_info(fields, jn_tracker_service)}]),
     application:start(exmpp),
     mod_monitor:init(),
     init_logger(),
     ChannelMonitor = scheduleChannelPurge(5000, [], ChannelTimeout),
     {_, XmppCom} = make_connection(JID, Pass, Server, Port),
-    loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, [list_to_binary(S) || S <- string:tokens(WhiteDomain, ",")], MaxPerPeriod, PeriodSeconds, #port_mgr{init=InitPort,end_port=EndPort,list=[]}).
+    {ok, #state{xmppCom=XmppCom, jid=JID, pass=Pass, server=Server, port=Port, pubIP=PubIP, channelMonitor=ChannelMonitor, whiteDomain=[list_to_binary(S) || S <- string:tokens(WhiteDomain, ",")], maxPerPeriod=MaxPerPeriod, periodSeconds=PeriodSeconds, extra=#port_mgr{init=InitPort,end_port=EndPort,list=[]}}}.
+
+%%--------------------------------------------------------------------
+%% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
+%%                                      {reply, Reply, State, Timeout} |
+%%                                      {noreply, State} |
+%%                                      {noreply, State, Timeout} |
+%%                                      {stop, Reason, Reply, State} |
+%%                                      {stop, Reason, State}
+%% Description: Handling call messages
+%%--------------------------------------------------------------------
+handle_info(#received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ, from=From}, #state{}=State) ->
+  {_, NewExtra}=process_iq(Type, IQ, From, exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)), State),
+  {noreply, State#state{extra=NewExtra}};
+
+handle_info({_, tcp_closed}, #state{jid=JID, server=Server, pass=Pass, port=Port}=State) ->
+  ?INFO_MSG("Connection Closed. Trying to Reconnect...~n", []),
+  {_, NewXmppCom} = make_connection(JID, Pass, Server, Port),
+  ?INFO_MSG("Reconnected.~n", []),
+  {noreply, State#state{xmppCom=NewXmppCom}};
+
+handle_info(stop, #state{xmppCom=XmppCom}=State) ->
+  ?INFO_MSG("Component Stopped.~n",[]),
+  exmpp_component:stop(XmppCom),
+  {noreply, State};
+
+handle_info(status,  #state{channelMonitor=ChannelMonitor}=State) ->
+  ChannelMonitor ! status,
+  {noreply, State};
+
+handle_info(Record, State) -> 
+  ?INFO_MSG("Unknown Info Request: ~p~n", [Record]),
+  {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% Function: handle_cast(Msg, State) -> {noreply, State} |
+%%                                      {noreply, State, Timeout} |
+%%                                      {stop, Reason, State}
+%% Description: Handling cast messages
+%%--------------------------------------------------------------------
+handle_cast(_Msg, State) ->
+ ?INFO_MSG("Received: ~p~n", [_Msg]), 
+ {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% Function: handle_info(Info, State) -> {noreply, State} |
+%%                                       {noreply, State, Timeout} |
+%%                                       {stop, Reason, State}
+%% Description: Handling all non call/cast messages
+%%--------------------------------------------------------------------
+handle_call(Info,_From, _State) ->
+ ?INFO_MSG("Received Call: ~p~n", [Info]), 
+ {reply, ok, _State}.
+
+%%--------------------------------------------------------------------
+%% Function: terminate(Reason, State) -> void()
+%% Description: This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any necessary
+%% cleaning up. When it returns, the gen_server terminates with Reason.
+%% The return value is ignored.
+%%--------------------------------------------------------------------
+terminate(_Reason, _State) ->
+  ok.
+
+%%--------------------------------------------------------------------
+%% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% Description: Convert process state when code is changed
+%%--------------------------------------------------------------------
+code_change(_OldVsn, State, _Extra) ->
+  {ok, State}.
+
+%%--------------------------------------------------------------------
+%%% Internal functions
+%%--------------------------------------------------------------------
 
 init_logger() ->
 	p1_loglevel:set(4),
@@ -105,52 +200,30 @@ make_connection(XmppCom, JID, Pass, Server, Port, Tries) ->
 		make_connection(XmppCom, JID, Pass, Server, Port, Tries-1)
     end.
 
-loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds, State) ->
-    receive
-	status ->
-	    ChannelMonitor ! status,
-	    loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds, State);
-        stop ->
-            ?INFO_MSG("Component Stopped.~n",[]),
-	    exmpp_component:stop(XmppCom);
-	#received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ, from=From} ->
-	    %%?INFO_MSG("IQ Request: ~p~n", [Record]),
-	    {_, NewState}=process_iq(XmppCom, Type, IQ, From, PubIP,exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)),JID, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds, State),
-	    loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds, NewState);
-	{_, tcp_closed} ->
-	    ?INFO_MSG("Connection Closed. Trying to Reconnect...~n", []),
-	    {_, NewXmppCom} = make_connection(JID, Pass, Server, Port),
-	    ?INFO_MSG("Reconnected.~n", []),
-	    loop(NewXmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds, State);
-	Record ->
-            ?INFO_MSG("Unknown Request: ~p~n", [Record]),
-            loop(XmppCom, JID, Pass, Server, Port, PubIP, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds, State)
-    end.
-
 %% Create Channel and return details
-process_iq(XmppCom, "get", IQ, From, PubIP, ?NS_CHANNEL, _, ChannelMonitor, WhiteDomain, MaxPerPeriod, PeriodSeconds, #port_mgr{}=State) ->
+process_iq("get", IQ, From, ?NS_CHANNEL, #state{xmppCom=XmppCom, pubIP=PubIP, channelMonitor=ChannelMonitor, whiteDomain=WhiteDomain, maxPerPeriod=MaxPerPeriod, periodSeconds=PeriodSeconds, extra=Extra}) ->
     Permitted = is_allowed(From, WhiteDomain) andalso mod_monitor:accept(From, MaxPerPeriod, PeriodSeconds),	
 	if Permitted == true ->
-    		case allocate_relay(ChannelMonitor, From, State) of
-		{ok, PortA, PortB, NewState} ->
+    		case allocate_relay(ChannelMonitor, From, Extra) of
+		{ok, PortA, PortB, NewExtra} ->
 			?INFO_MSG("Allocated Port for : ~p~n", [From]),
 			Result = exmpp_iq:result(IQ,get_candidate_elem(PubIP, PortA, PortB)),
 			exmpp_component:send_packet(XmppCom, Result),
-			{ok, NewState};
+			{ok, NewExtra};
 		_ ->
 			?ERROR_MSG("Could Not Allocate Port for : ~p~n", [From]),
 			Error = exmpp_iq:error_without_original(IQ, 'internal-server-error'),
 			exmpp_component:send_packet(XmppCom, Error),
-			{error, State}
+			{error, Extra}
 		end;
 	true -> 
 		?ERROR_MSG("[Not Acceptable] Could Not Allocate Port for : ~p~n", [From]),
 		Error = exmpp_iq:error_without_original(IQ, 'policy-violation'),
                 exmpp_component:send_packet(XmppCom, Error),
-		{error, State}		
+		{error, Extra}		
 	end;
 
-process_iq(XmppCom, "get", IQ, _, _, ?NS_DISCO_INFO, _, _, _, _, _, State) ->
+process_iq("get", IQ, _, ?NS_DISCO_INFO, #state{xmppCom=XmppCom}=State) ->
         Identity = exmpp_xml:element(?NS_DISCO_INFO, 'identity', [exmpp_xml:attribute("category", <<"proxy">>),
                                                       exmpp_xml:attribute("type", <<"relay">>),
                                                       exmpp_xml:attribute("name", <<"Jingle Nodes Relay">>)
@@ -162,19 +235,19 @@ process_iq(XmppCom, "get", IQ, _, _, ?NS_DISCO_INFO, _, _, _, _, _, State) ->
         exmpp_component:send_packet(XmppCom, Result),
 	{ok, State};
 
-process_iq(XmppCom, "get", IQ, _, _, ?NS_JINGLE_NODES, JID, _, _, _, _, State) ->
+process_iq("get", IQ, _, ?NS_JINGLE_NODES, #state{jid=JID, xmppCom=XmppCom}=State) ->
 	Relay = exmpp_xml:element(undefined, 'relay', [exmpp_xml:attribute('policy',"public"), exmpp_xml:attribute('protocol', "udp"), exmpp_xml:attribute('address', JID)], []),
 	Services = exmpp_xml:element(?NS_JINGLE_NODES, ?NAME_SERVICES, [],[Relay]),
 	Result = exmpp_iq:result(IQ, Services),
 	exmpp_component:send_packet(XmppCom, Result),
 	{ok, State};
 
-process_iq(XmppCom, "get", IQ, _, _, ?NS_PING, _, _, _, _, _, State) ->
+process_iq("get", IQ, _, ?NS_PING, #state{xmppCom=XmppCom}=State) ->
         Result = exmpp_iq:result(IQ),
         exmpp_component:send_packet(XmppCom, Result),
         {ok, State};
 
-process_iq(XmppCom, "get", IQ, _, _, _, _, _, _, _, _, State) ->
+process_iq("get", IQ, _, _,  #state{xmppCom=XmppCom}=State) ->
 		    Error = exmpp_iq:error(IQ,'feature-not-implemented'),
 		    exmpp_component:send_packet(XmppCom, Error),
 		    {ok, State}.
@@ -262,3 +335,12 @@ cover_channels(_, 0, _) -> ok;
 cover_channels(ChannelMonitor, T, State) ->		
 	{_, _, _, NewState} = allocate_relay(ChannelMonitor, "s", State),
 	cover_channels(ChannelMonitor, T-1, NewState).
+
+get(_Key, []) ->
+  ?ERROR_MSG("Property Not Found: ~p~n", [_Key]),
+  not_found;
+get(Key, [{Key, Value} | _Config]) ->
+  Value;
+get(Key, [{_Other, _Value} | Config]) ->
+  get(Key, Config).
+

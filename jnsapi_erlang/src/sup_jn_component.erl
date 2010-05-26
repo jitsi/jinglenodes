@@ -41,7 +41,7 @@ start_link() ->
 %%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init(Args) ->
+init([]) ->
     RestartStrategy = one_for_one,
     MaxRestarts = 1000,
     MaxSecondsBetweenRestarts = 3600,
@@ -54,6 +54,8 @@ init(Args) ->
 
     AChild = {jn_component, {jn_component, start_link, []},
 	      Restart, Shutdown, Type, [jn_component]},
+
+    %%io:format("Application Restart Policy: ~p~n",[Restart]),
 
     {ok, {SupFlags, [AChild]}}.
 

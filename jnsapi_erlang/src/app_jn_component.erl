@@ -3,7 +3,7 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1]).
+-export([start/0, start/2, stop/1]).
 
 %%%===================================================================
 %%% Application callbacks
@@ -25,6 +25,14 @@
 %%      StartArgs = term()
 %% @end
 %%--------------------------------------------------------------------
+start() ->
+dbg:tracer(),
+dbg:p(all,c),
+dbg:tpl(app_jn_component, []),
+dbg:tpl(jn_component, []),
+dbg:tpl(sup_jn_component, []),
+    application:start(app_jn_component).
+
 start(_StartType, _StartArgs) ->
     case sup_jn_component:start_link() of
 	{ok, Pid} ->

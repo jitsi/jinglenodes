@@ -18,7 +18,7 @@
 -define(NS_JINGLE_NODES,'http://jabber.org/protocol/jinglenodes').
 -define(NAME_SERVICES,'services').
 -define(NS_CHANNEL_s,"http://jabber.org/protocol/jinglenodes#channel").
--define(LOG_PATH, "jn_component.log").
+-define(LOG_PATH, "./jn_component.log").
 -define(SERVER, ?MODULE).
 
 -import(config).
@@ -29,7 +29,7 @@
 -include_lib("include/p1_logger.hrl").
 
 %% API
--export([start_link/1]).
+-export([start_link/0, init/11]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -41,8 +41,8 @@
 -record(port_mgr, {init, end_port, list}).
 -record(state, {xmppCom, jid, pass, server, port, pubIP, channelMonitor, whiteDomain, maxPerPeriod, periodSeconds, extra}).
 
-start_link(Args) ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
+start_link() ->
+	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %%====================================================================
 %% gen_server callbacks
@@ -56,19 +56,26 @@ start_link(Args) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-	{_, Cfg} = file:consult("./jn_component.cfg"),
-	init(	
-		get(jid, Cfg),
-		get(pass, Cfg),
-		get(server, Cfg),
-                get(port, Cfg),
-                get(public_ip, Cfg),
-                get(channel_timeout, Cfg),
-                get(whitelist, Cfg),
-                get(max_per_period, Cfg),
-                get(period_seconds, Cfg),
-                get(init_port, Cfg),
-                get(end_port, Cfg)).
+	init_logger(),
+	?INFO_MSG("Loading Application",[]),
+	case file:consult("jn_component.cfg") of
+		{_, Cfg} ->
+			?INFO_MSG("Loding Config",[]),
+			init(                   get(jid, Cfg),
+                                get(pass, Cfg),
+                                get(server, Cfg),
+                                get(port, Cfg),
+                                get(public_ip, Cfg),
+                                get(channel_timeout, Cfg),
+                                get(whitelist, Cfg),
+                                get(max_per_period, Cfg),
+                                get(period_seconds, Cfg),
+                                get(init_port, Cfg),
+                                get(end_port, Cfg));
+		_ -> 		
+				?INFO_MSG("TESTES~n",[]),
+				{error, config_missing}
+	end.
 
 init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, PeriodSeconds, InitPort, EndPort) ->
     mnesia:create_table(jn_relay_service,
@@ -81,7 +88,6 @@ init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, 
              {attributes, record_info(fields, jn_tracker_service)}]),
     application:start(exmpp),
     mod_monitor:init(),
-    init_logger(),
     ChannelMonitor = scheduleChannelPurge(5000, [], ChannelTimeout),
     {_, XmppCom} = make_connection(JID, Pass, Server, Port),
     {ok, #state{xmppCom=XmppCom, jid=JID, pass=Pass, server=Server, port=Port, pubIP=PubIP, channelMonitor=ChannelMonitor, whiteDomain=[list_to_binary(S) || S <- string:tokens(WhiteDomain, ",")], maxPerPeriod=MaxPerPeriod, periodSeconds=PeriodSeconds, extra=#port_mgr{init=InitPort,end_port=EndPort,list=[]}}}.

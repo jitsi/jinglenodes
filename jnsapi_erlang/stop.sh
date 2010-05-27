@@ -1,5 +1,5 @@
 #!/bin/bash
-HOSTNAME=d6h57b4j0
+HOSTNAME=`hostname`
 ##`hostname`
 erl_call -n JNLocal@$HOSTNAME -v -a 'init stop []'
 kill -9 `ps -C epmd -o pid=`

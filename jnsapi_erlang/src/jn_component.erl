@@ -29,7 +29,7 @@
 -include_lib("include/p1_logger.hrl").
 
 %% API
--export([start_link/0, init/11]).
+-export([start_link/0, init/11, get_stats/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -93,13 +93,10 @@ init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, 
     {ok, #state{xmppCom=XmppCom, jid=JID, pass=Pass, server=Server, port=Port, pubIP=PubIP, channelMonitor=ChannelMonitor, whiteDomain=[list_to_binary(S) || S <- string:tokens(WhiteDomain, ",")], maxPerPeriod=MaxPerPeriod, periodSeconds=PeriodSeconds, extra=#port_mgr{init=InitPort,end_port=EndPort,list=[]}}}.
 
 %%--------------------------------------------------------------------
-%% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
-%%                                      {reply, Reply, State, Timeout} |
-%%                                      {noreply, State} |
-%%                                      {noreply, State, Timeout} |
-%%                                      {stop, Reason, Reply, State} |
-%%                                      {stop, Reason, State}
-%% Description: Handling call messages
+%% Function: handle_info(Info, State) -> {noreply, State} |
+%%                                       {noreply, State, Timeout} |
+%%                                       {stop, Reason, State}
+%% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
 handle_info(#received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ, from=From}, #state{}=State) ->
   {_, NewExtra}=process_iq(Type, IQ, From, exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)), State),
@@ -116,8 +113,11 @@ handle_info(stop, #state{xmppCom=XmppCom}=State) ->
   exmpp_component:stop(XmppCom),
   {noreply, State};
 
-handle_info(status,  #state{channelMonitor=ChannelMonitor}=State) ->
-  ChannelMonitor ! status,
+handle_info({active, PID}=S,  #state{channelMonitor=ChannelMonitor}=State) ->
+  ChannelMonitor ! S,
+	receive
+		{active, _}=Active -> PID!Active
+	end,
   {noreply, State};
 
 handle_info(Record, State) -> 
@@ -135,10 +135,13 @@ handle_cast(_Msg, State) ->
  {noreply, State}.
 
 %%--------------------------------------------------------------------
-%% Function: handle_info(Info, State) -> {noreply, State} |
-%%                                       {noreply, State, Timeout} |
-%%                                       {stop, Reason, State}
-%% Description: Handling all non call/cast messages
+%% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
+%%                                      {reply, Reply, State, Timeout} |
+%%                                      {noreply, State} |
+%%                                      {noreply, State, Timeout} |
+%%                                      {stop, Reason, Reply, State} |
+%%                                      {stop, Reason, State}
+%% Description: Handling call messages
 %%--------------------------------------------------------------------
 handle_call(Info,_From, _State) ->
  ?INFO_MSG("Received Call: ~p~n", [Info]), 
@@ -318,10 +321,18 @@ check_relays([A|B], Timeout, Remain) ->
 
 scheduleChannelPurge(Period, Relays, Timeout) -> spawn(fun () -> schedule(Period, Relays, Timeout) end).
 
+get_stats() ->
+	whereis(jn_component)!{active, self()},
+	receive 
+		{Stat, N} -> N
+	end.
+
 schedule(Period, Relays, Timeout) ->
     receive
-        status -> 
-		io:format("Active Channels ~p~n", [length(Relays)]),
+        {active, PID} -> 
+		Active = length(Relays),
+		io:format("Active Channels ~p~n", [Active]),
+		PID!{active, Active},
 		schedule(Period, Relays, Timeout);
 	NewRelay -> 
 		?INFO_MSG("Relay Added: ~p~n", [NewRelay]),

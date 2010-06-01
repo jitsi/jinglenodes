@@ -99,8 +99,10 @@ init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, 
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
 handle_info(#received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ, from=From}, #state{}=State) ->
-  {_, NewExtra}=process_iq(Type, IQ, From, exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)), State),
-  {noreply, State#state{extra=NewExtra}};
+  	case process_iq(Type, IQ, From, exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)), State) of 
+	{_, #state{}=NewState} -> {noreply, NewState};
+	_ -> {noreply, State}
+	end;
 
 handle_info({_, tcp_closed}, #state{jid=JID, server=Server, pass=Pass, port=Port}=State) ->
   ?INFO_MSG("Connection Closed. Trying to Reconnect...~n", []),
@@ -154,8 +156,17 @@ handle_call(Info,_From, _State) ->
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-  ok.
+terminate(_Reason, #state{channelMonitor=ChannelMonitor}) ->
+	?INFO_MSG("Terminating Component...", []),
+	ChannelMonitor ! stop,
+	application:stop(exmpp),
+	?INFO_MSG("Terminated Component.", []),
+	ok;
+
+terminate(_Reason, _) -> 
+	application:stop(exmpp),
+        ?INFO_MSG("Forced Terminated Component.", []),
+        ok.
 
 %%--------------------------------------------------------------------
 %% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}
@@ -210,7 +221,7 @@ make_connection(XmppCom, JID, Pass, Server, Port, Tries) ->
     end.
 
 %% Create Channel and return details
-process_iq("get", IQ, From, ?NS_CHANNEL, #state{xmppCom=XmppCom, pubIP=PubIP, channelMonitor=ChannelMonitor, whiteDomain=WhiteDomain, maxPerPeriod=MaxPerPeriod, periodSeconds=PeriodSeconds, extra=Extra}) ->
+process_iq("get", IQ, From, ?NS_CHANNEL, #state{xmppCom=XmppCom, pubIP=PubIP, channelMonitor=ChannelMonitor, whiteDomain=WhiteDomain, maxPerPeriod=MaxPerPeriod, periodSeconds=PeriodSeconds, extra=Extra}=State) ->
     Permitted = is_allowed(From, WhiteDomain) andalso mod_monitor:accept(From, MaxPerPeriod, PeriodSeconds),	
 	if Permitted == true ->
     		case allocate_relay(ChannelMonitor, From, Extra) of
@@ -218,18 +229,18 @@ process_iq("get", IQ, From, ?NS_CHANNEL, #state{xmppCom=XmppCom, pubIP=PubIP, ch
 			?INFO_MSG("Allocated Port for : ~p~n", [From]),
 			Result = exmpp_iq:result(IQ,get_candidate_elem(PubIP, PortA, PortB)),
 			exmpp_component:send_packet(XmppCom, Result),
-			{ok, NewExtra};
+			{ok, State#state{extra=NewExtra}};
 		_ ->
 			?ERROR_MSG("Could Not Allocate Port for : ~p~n", [From]),
 			Error = exmpp_iq:error_without_original(IQ, 'internal-server-error'),
 			exmpp_component:send_packet(XmppCom, Error),
-			{error, Extra}
+			{error, State}
 		end;
 	true -> 
 		?ERROR_MSG("[Not Acceptable] Could Not Allocate Port for : ~p~n", [From]),
 		Error = exmpp_iq:error_without_original(IQ, 'policy-violation'),
                 exmpp_component:send_packet(XmppCom, Error),
-		{error, Extra}		
+		{error, State}		
 	end;
 
 process_iq("get", IQ, _, ?NS_DISCO_INFO, #state{xmppCom=XmppCom}=State) ->
@@ -256,10 +267,9 @@ process_iq("get", IQ, _, ?NS_PING, #state{xmppCom=XmppCom}=State) ->
         exmpp_component:send_packet(XmppCom, Result),
         {ok, State};
 
-process_iq("get", IQ, _, _,  #state{xmppCom=XmppCom}=State) ->
-		    Error = exmpp_iq:error(IQ,'feature-not-implemented'),
-		    exmpp_component:send_packet(XmppCom, Error),
-		    {ok, State}.
+process_iq(Type, IQ, _, _,  #state{xmppCom=XmppCom}=State) ->
+	?INFO_MSG("Unknown Request: ~p~n", [IQ]),	    
+	{ok, State}.
 
 get_candidate_elem(Host, A, B) ->
 	Raw_Elem = exmpp_xml:element(?NS_CHANNEL,?NAME_CHANNEL),
@@ -322,9 +332,13 @@ check_relays([A|B], Timeout, Remain) ->
 scheduleChannelPurge(Period, Relays, Timeout) -> spawn(fun () -> schedule(Period, Relays, Timeout) end).
 
 get_stats() ->
+	get_stats(3).
+get_stats(0) -> 0;
+get_stats(N) ->
 	whereis(jn_component)!{active, self()},
 	receive 
 		{Stat, N} -> N
+	after 100 -> get_stats(N-1)
 	end.
 
 schedule(Period, Relays, Timeout) ->
@@ -336,8 +350,10 @@ schedule(Period, Relays, Timeout) ->
 		schedule(Period, Relays, Timeout);
 	NewRelay -> 
 		?INFO_MSG("Relay Added: ~p~n", [NewRelay]),
-		schedule(Period, [NewRelay | Relays], Timeout)
-    after Period ->
+		schedule(Period, [NewRelay | Relays], Timeout);
+        stop ->
+		?INFO_MSG("Stopping Schedule Loop.~n", [])
+     after Period ->
 	Remain = check_relays(Relays, Timeout),
         schedule(Period, Remain, Timeout)
     end.

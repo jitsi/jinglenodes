@@ -10,6 +10,8 @@
 %%%-------------------------------------------------------------------
 -module(udp_relay).
 
+-include_lib("include/p1_logger.hrl").
+
 -behaviour(gen_server).
 
 %% API
@@ -18,14 +20,6 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
-
--define(ERROR_MSG(Format, Args),
-	error_logger:error_msg("(~p:~p:~p) " ++ Format ++ "~n",
-			       [self(), ?MODULE, ?LINE | Args])).
-
--define(INFO_MSG(Format, Args),
-	error_logger:info_msg("(~p:~p:~p) " ++ Format ++ "~n",
-			       [self(), ?MODULE, ?LINE | Args])).
 
 -record(state, {local_sock, remote_sock, last_recv_local, last_recv_remote, local_sock_c, remote_sock_c, last_recv_local_c, last_recv_remote_c, lastTimestamp}).
 

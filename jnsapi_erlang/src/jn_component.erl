@@ -28,6 +28,9 @@
 -include_lib("exmpp/include/exmpp_client.hrl").
 -include_lib("include/p1_logger.hrl").
 
+%% Cover Test
+-export([cover_test/0]).
+
 %% API
 -export([start_link/0, init/11, get_stats/0]).
 
@@ -267,7 +270,7 @@ process_iq("get", IQ, _, ?NS_PING, #state{xmppCom=XmppCom}=State) ->
         exmpp_component:send_packet(XmppCom, Result),
         {ok, State};
 
-process_iq(Type, IQ, _, _,  #state{xmppCom=XmppCom}=State) ->
+process_iq(_, IQ, _, _,  #state{}=State) ->
 	?INFO_MSG("Unknown Request: ~p~n", [IQ]),	    
 	{ok, State}.
 
@@ -332,42 +335,68 @@ check_relays([A|B], Timeout, Remain) ->
 scheduleChannelPurge(Period, Relays, Timeout) -> spawn(fun () -> schedule(Period, Relays, Timeout) end).
 
 get_stats() ->
-	get_stats(3).
-get_stats(0) -> 0;
-get_stats(N) ->
-	whereis(jn_component)!{active, self()},
+	get_stats(3, whereis(jn_component)).
+get_stats(PID) ->
+	get_stats(3, PID).
+get_stats(0, _) -> 0;
+get_stats(N, PID) ->
+	PID!{active, self()},
 	receive 
-		{Stat, N} -> N
-	after 100 -> get_stats(N-1)
+		{_, N} -> N
+	after 100 -> get_stats(N-1, PID)
 	end.
 
 schedule(Period, Relays, Timeout) ->
     receive
         {active, PID} -> 
 		Active = length(Relays),
-		io:format("Active Channels ~p~n", [Active]),
+		?INFO_MSG("Active Channels ~p~n", [Active]),
 		PID!{active, Active},
 		schedule(Period, Relays, Timeout);
+	stop ->
+                ?INFO_MSG("Stopping Schedule Loop.~n", []);
 	NewRelay -> 
 		?INFO_MSG("Relay Added: ~p~n", [NewRelay]),
-		schedule(Period, [NewRelay | Relays], Timeout);
-        stop ->
-		?INFO_MSG("Stopping Schedule Loop.~n", [])
+		schedule(Period, [NewRelay | Relays], Timeout)
      after Period ->
 	Remain = check_relays(Relays, Timeout),
         schedule(Period, Remain, Timeout)
     end.
 
 cover_test() ->
+	init_logger(),
 	cover_channels().
 
 cover_channels() -> 
-	ChannelMonitor = scheduleChannelPurge(5000, [], 30000),
-	cover_channels(ChannelMonitor, 50, #port_mgr{init=10000, end_port=60000, list=[]}).
-cover_channels(_, 0, _) -> ok;
+	ChannelMonitor = scheduleChannelPurge(500, [], 5000),
+	cover_channels(ChannelMonitor, 20, #port_mgr{init=10000, end_port=60000, list=[]}).
+cover_channels(ChannelMonitor, 0, _) ->
+	timer:sleep(1000),
+        Active = get_stats(ChannelMonitor),
+        case Active of
+                20 ->
+                        ?INFO_MSG("Channel Coverage Test Succeed. [~p]~n", [ok]);
+                C ->
+                        ?ERROR_MSG("Channel Coverage Test Failed!!! Not enough Channels: ~p Open.~n", [C])
+        end,
+	timer:sleep(6000),
+	Remaining = get_stats(ChannelMonitor),	
+	case Remaining of
+		0 ->
+			?INFO_MSG("Channel Coverage Test Succeed. [~p]~n", [ok]),
+			ok;
+		N ->
+			?ERROR_MSG("Channel Coverage Test Failed!!! Remaining ~p Channel to be Closed.~n", [N])
+	end;
+	
 cover_channels(ChannelMonitor, T, State) ->		
-	{_, _, _, NewState} = allocate_relay(ChannelMonitor, "s", State),
-	cover_channels(ChannelMonitor, T-1, NewState).
+	case allocate_relay(ChannelMonitor, "s", State) of
+		{ok, _, _, NewState} ->
+			cover_channels(ChannelMonitor, T-1, NewState); 
+		_ ->
+			ChannelMonitor ! stop,
+			?ERROR_MSG("Coverage Test Failed!!!~n", [])
+	end.
 
 get(_Key, []) ->
   ?ERROR_MSG("Property Not Found: ~p~n", [_Key]),

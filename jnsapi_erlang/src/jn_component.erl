@@ -337,12 +337,13 @@ scheduleChannelPurge(Period, Relays, Timeout) -> spawn(fun () -> schedule(Period
 get_stats() ->
 	get_stats(3, whereis(jn_component)).
 get_stats(PID) ->
+	timer:sleep(300),
 	get_stats(3, PID).
-get_stats(0, _) -> 0;
+get_stats(0, _) -> -1;
 get_stats(N, PID) ->
 	PID!{active, self()},
 	receive 
-		{_, N} -> N
+		{_, A} -> A
 	after 100 -> get_stats(N-1, PID)
 	end.
 
@@ -368,7 +369,7 @@ cover_test() ->
 	cover_channels().
 
 cover_channels() -> 
-	ChannelMonitor = scheduleChannelPurge(500, [], 5000),
+	ChannelMonitor = scheduleChannelPurge(500, [], 4000),
 	cover_channels(ChannelMonitor, 20, #port_mgr{init=10000, end_port=60000, list=[]}).
 cover_channels(ChannelMonitor, 0, _) ->
 	timer:sleep(1000),
@@ -379,7 +380,7 @@ cover_channels(ChannelMonitor, 0, _) ->
                 C ->
                         ?ERROR_MSG("Channel Coverage Test Failed!!! Not enough Channels: ~p Open.~n", [C])
         end,
-	timer:sleep(6000),
+	timer:sleep(5000),
 	Remaining = get_stats(ChannelMonitor),	
 	case Remaining of
 		0 ->

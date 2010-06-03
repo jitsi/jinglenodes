@@ -34,6 +34,12 @@
 			<jid>barata7@gmail.com</jid>
 		</author>
 		<revision>
+    			<version>0.0.2</version>
+    			<date>2010-05-30</date>
+    			<initials>psa</initials>
+    			<remark><p>Added STUN Service Tracking Support. Removed Public IP requirement for Relay Service.</p></remark>
+  		</revision>
+		<revision>
 			<version>0.0.1</version>
 			<date>2009-12-17</date>
 			<initials>psa</initials>
@@ -47,7 +53,7 @@
 Jingle Nodes is an XMPP Based Relay Service providing standard UDP/TCP Relay, but negotiated via XMPP.
 Jingle Relay Nodes are intend to provide easy to use Jingle Relay Type Candidates that can be used in ICE-UDP, RAW-UDP, TCP Jingle Sessions.
 Relay Candidates can provide NAT Traversal for Jingle users with or without STUN/TURN Support.
-The main benefits of Jingle Relay Nodes is the easy to use candidates, Jingle Clients can became a Node and Jingle Relay Nodes are published via XMPP, meaning every Client or Server can also act as a tracker of another Nodes.</p>
+The main benefits of Jingle Relay Nodes is the easy to use candidates, Jingle Clients can became a Node and Jingle Relay Nodes are published via XMPP, meaning every Client or Server can also act as a tracker of another Nodes and STUN Servers.</p>
 	</section1>
 	<section1 topic="Requirements" anchor="reqs">
 		<p>Jingle Relay Nodes MUST be binded directly to a Public IP address without firewall for traffic on the port range reserved to be used by relay candidates. This is the main and unique requirement for a peer provide Relay Nodes Service.
@@ -70,11 +76,11 @@ All signalling, request, response and publishing is done via XMPP, not requiring
 				</tr>
 				<tr>
 					<td>Tracker</td>
-					<td>Is the entity that trackers Jingle Relay Nodes and also publishes the list upon request. Potentially all Jingle Clients might act as a Node Tracker.</td>
+					<td>Is the entity that trackers Jingle Relay Nodes and STUN Servers. It also publishes the list upon request. Potentially all Jingle Clients may act as a Node Tracker.</td>
 				</tr>
 				<tr>
 					<td>Channel</td>
-					<td>Is the UDP Relay Channel, provided by the a Jingle Relay Node. The channel act as a NAT Traversal Channel in order to delivery and receive media.</td>
+					<td>Is the UDP/TCP Relay Channel, provided by the a Jingle Relay Node. The channel act as a NAT Traversal Channel in order to delivery and receive media.</td>
 				</tr>
 				<tr>
 					<td>Requester</td>
@@ -113,7 +119,8 @@ All signalling, request, response and publishing is done via XMPP, not requiring
     type='result'>
  <services xmlns='http://jabber.org/protocol/jinglenodes'>
     <relay policy='public' address='montague.lit' protocol='udp'/>
-    <tracker policy='public' address='capulet.lit' protocol='udp'/>
+    <tracker policy='public' address='capulet.lit' protocol='udp'/> 
+    <stun policy='public' address='200.111.111.111' port='3857' protocol='udp'/>
  </services>
  </iq> ]]></example>
 <em>In this example 'montague.lit' XMPP Domain a Relay Service and a Tracker Service. The Relay Service can be contacted in order to retrieve Relay Channels. The Tracker Service can be contacted in order to retrieve its known services.</em>
@@ -160,7 +167,7 @@ All signalling, request, response and publishing is done via XMPP, not requiring
 <em>In the presented example 'romeo@montague.lit/orchard' knows that 'juliet@capulet.lit/balcony' provides Relay Service, but if another entity requests 'romeo@montague.lit/orchard' its known services, it MUST NOT include 'juliet@capulet.lit/balcony' as it is a roster restricted entry.</em>
 		</section2>        
 		<section2 topic="Jingle Client Consuming the Relay Service" anchor="clientconsumingrelay">
-			<p>A Jingle Client with direct access to a public IP can potentially provide the Relay Service becaming itself a Jingle Relay Node. The service can intend to provide a public service, or a restricted services based on user preferences, like buddylist, whitelist, blacklist, domain, etc...</p>
+			<p>A Jingle Client with Internet connectivity wheter with direct access to a public IP or not, can potentially provide the Relay Service becaming itself a Jingle Relay Node. The service can intend to provide a public service, or a restricted services based on user preferences, like buddylist, whitelist, blacklist, domain, etc...</p>
 			<p>
 				<em>Note: It is NOT mandatory to became a Jingle Relay Node it is OPTIONAL and SHOULD be done ONLY under user awareness and concentiment.</em>
 			</p>
@@ -172,7 +179,6 @@ All signalling, request, response and publishing is done via XMPP, not requiring
   <channel xmlns='http://jabber.org/protocol/jinglenodes#channel' protocol='udp'/>
 </iq>
   ]]></example>
-			 <p>After receiving the &CHANNEL; the requester MUST send his stream to 'host' and 'localport' pair and send a &CANDIDATE; containing the 'host' and 'remoteport' values.</p>
   <example caption="Candidate Returned by a Node with channel bandwidth throttle"><![CDATA[
   <iq from='juliet@capulet.lit/balcony'
     id='uw72g176'
@@ -187,6 +193,7 @@ All signalling, request, response and publishing is done via XMPP, not requiring
  maxkbps='120'
  expire='60'/>
  </iq> ]]></example>
+<em><p>After receiving the &CHANNEL; the requester MUST send his stream to 'host' and 'localport' pair and send a &CANDIDATE; containing the 'host' and 'remoteport' values.</p></em>
 		</section2>
 	</section1>
     <section1 topic="Services Definitions" anchor="servicesdefinition">
@@ -270,18 +277,20 @@ All signalling, request, response and publishing is done via XMPP, not requiring
   <section3 topic="Localport Attribute" anchor="def-localport">
     <p>The value of the 'localport' attribute MUST be a valid IP Port number. This port MUST be used as the media traffic destination port of the channel requester. Session Initiator and responder MUST NOT offer this port.</p>
     <p>The rule is simple and unique, the requester of the channel MUST send the media streams to 'localport' and use 'remoteport' in the 'candidate' element to be offered in the Jingle Session.</p>
+    <p>For transparent compatibility with major RTP Proxy Deployments, an RCTP Port is allocated and defined by default at Localport Attribute Value plus one. (Localport + 1)</p>
   </section3>
   <section3 topic='Remoteport Attribute' anchor='def-remoteport'>
     <p>The value of the 'remoteport' attribute MUST be a valid IP Port number. This port MUST be used as media traffic destination port of the other party. Channel requester MUST use this port value in the candidate offer in combination with the 'host' attribute. Channel requester MUST NOT send any media stream to this port.</p>
+    <p>For transparent compatibility with major RTP Proxy Deployments, an RCTP Port is allocated and defined by default at Remoteport Attribute Value plus one. (Localport + 1)</p>
   </section3>  
   <section3 topic='Protocol Attribute' anchor='def-protocol'>
-    <p>The value of the 'remoteport' attribute MUST be a valid protocol value: 'udp' or 'tcp' as also defined in the <link url='#schema'>XML Schema</link></p>
+    <p>The value of the 'protocol' attribute MUST be a valid protocol value: 'udp' or 'tcp' as also defined in the <link url='#schema'>XML Schema</link></p>
   </section3>  
     <section3 topic='Maxkbps Attribute' anchor='def-maxkbps'>
     <p>The value of the 'maxkbps' attribute MUST be a valid integer value representing the maximum kilobits per seconds the channel supports. This attribute is optional and MAY be used in Relay Channel with bandwidth limitation.</p>
   </section3>
     <section3 topic='Expire Attribute' anchor='def-expire'>
-    <p>The value of the 'expire' attribute MUST be a valid integer value representing the maximum seconds that the channel can stay without receiving any traffic without being deactivated and closed. This attribute is required and MUST be used in all Relay Channels.</p>
+    <p>The value of the 'expire' attribute MUST be a valid integer value representing the maximum seconds that the channel can stay without receiving any traffic without being deactivated and closed. This attribute is required and SHOULD be used in all Relay Channels.</p>
   </section3>
 </section2>
   <section2 topic="Services Element" anchor="def-services">
@@ -300,7 +309,7 @@ All signalling, request, response and publishing is done via XMPP, not requiring
       </tr>      
       <tr>
         <td>address</td>
-        <td>The IP address or Host address of the Relay Channel.</td> 
+        <td>For Relay and Tracker Services the JID. For STUN Service the IP or Host address.</td>
         <td>REQUIRED</td>
       </tr>
       <tr>
@@ -308,12 +317,18 @@ All signalling, request, response and publishing is done via XMPP, not requiring
         <td>The protocol supported by the retrieved service.</td> 
         <td>REQUIRED</td>
       </tr>
+      <tr>
+        <td>port</td>
+        <td>The port number of the STUN service. This field is only used in STUN Service entries.</td>
+        <td>REQUIRED for STUN entries</td>
+      </tr>
     </table>
 </section2>    
 </section1>
 	<section1 topic="Determining Support" anchor="support">
     <p>To advertise its support for the Jingle Nodes support, when replying to &xep0030; information requests an entity MUST return URNs for any version of this protocol that the entity supports -- e.g., "http://jabber.org/protocol/jinglenodes" for this version&VNOTE;.</p>
     <p>If the entity supports, Jingle Nodes as a Tracker, it MUST reply to &xep0030; with "http://jabber.org/protocol/jinglenodes". If it also provides the Jingle Nodes Relay Services, it MUST reply with the URN "http://jabber.org/protocol/jinglenodes#channel".</p>
+    <p>For optimization purpose the Client SHOULD check for Jingle Nodes support based on entity presence capabilities &xep0115;, which SHOULD contain the keywork "jn-v0".</p>
   <example caption="Service discovery information request"><![CDATA[
 <iq from='romeo@montague.lit/orchard'
     id='uw72g176'
@@ -430,6 +445,10 @@ All signalling, request, response and publishing is done via XMPP, not requiring
                     type='serviceElementType'
                     minOccurs='0'
                     maxOccurs='unbounded'/>                    
+        <xs:element name='stun' 
+                    type='serviceElementType'
+                    minOccurs='0'
+                    maxOccurs='unbounded'/>                    
       </xs:sequence>
     </xs:complexType>
   </xs:element>
@@ -438,6 +457,7 @@ All signalling, request, response and publishing is done via XMPP, not requiring
     <xs:simpleContent>
       <xs:extension base='empty'>
         <xs:attribute name='address' type='xs:string' use='required'/>
+        <xs:attribute name='port' type='xs:string' use='optional'/>
         <xs:attribute name='policy' use='required'>
           <xs:simpleType>
             <xs:restriction base='xs:NCName'>
@@ -450,7 +470,7 @@ All signalling, request, response and publishing is done via XMPP, not requiring
           <xs:simpleType>
             <xs:restriction base='xs:NCName'>
               <xs:enumeration value='udp'/>
-              <xs:enumeration value='tpc'/>
+              <xs:enumeration value='tcp'/>
             </xs:restriction>
           </xs:simpleType>
         </xs:attribute>

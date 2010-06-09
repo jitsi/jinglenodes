@@ -20,6 +20,7 @@
 -define(NS_CHANNEL_s,"http://jabber.org/protocol/jinglenodes#channel").
 -define(LOG_PATH, "./jn_component.log").
 -define(SERVER, ?MODULE).
+-define(SOCKOPTS, [binary, {active, once}]).
 
 -import(config).
 -import(file).
@@ -370,12 +371,13 @@ cover_test() ->
 
 cover_channels() -> 
 	ChannelMonitor = scheduleChannelPurge(500, [], 4000),
-	cover_channels(ChannelMonitor, 20, #port_mgr{init=10000, end_port=60000, list=[]}).
-cover_channels(ChannelMonitor, 0, _) ->
+	Max = 20,
+	cover_channels(ChannelMonitor, Max, Max , #port_mgr{init=10000, end_port=60000, list=[]}).
+cover_channels(ChannelMonitor, 0, Max, _) ->
 	timer:sleep(1000),
         Active = get_stats(ChannelMonitor),
         case Active of
-                20 ->
+                Max ->
                         ?INFO_MSG("Channel Coverage Test Succeed. [~p]~n", [ok]);
                 C ->
                         ?ERROR_MSG("Channel Coverage Test Failed!!! Not enough Channels: ~p Open.~n", [C])
@@ -390,13 +392,35 @@ cover_channels(ChannelMonitor, 0, _) ->
 			?ERROR_MSG("Channel Coverage Test Failed!!! Remaining ~p Channel to be Closed.~n", [N])
 	end;
 	
-cover_channels(ChannelMonitor, T, State) ->		
+cover_channels(ChannelMonitor, T, Max, State) ->		
 	case allocate_relay(ChannelMonitor, "s", State) of
 		{ok, _, _, NewState} ->
-			cover_channels(ChannelMonitor, T-1, NewState); 
+			cover_channels(ChannelMonitor, T-1, Max, NewState); 
 		_ ->
 			ChannelMonitor ! stop,
 			?ERROR_MSG("Coverage Test Failed!!!~n", [])
+	end.
+
+cover_udp_agent(LocalPort, DstHost, DstPort) ->
+	case gen_udp:open(LocalPort, ?SOCKOPTS) of
+		{ok, Socket} -> start_udp_test(Socket, self(), DstHost, DstPort);
+		_ -> {error, port} 
+	end.
+
+start_udp_test(Socket, PID, DstHost, DstPort) ->
+	spawn(fun () -> burst_traffic(Socket, PID, 50, DstHost, DstPort) end).	
+
+burst_traffic(Socket, PID, 0, _, _) -> 
+	PID ! {finish, Socket},
+	ok;
+burst_traffic(Socket, PID, N, DstHost, DstPort) ->
+	case gen_udp:send(Socket, DstHost, DstPort, <<"Relay Test Relay Test Relay Test Relay Test Relay Test Relay Test Relay Test ">>) of
+	        ok ->
+			timer:sleep(10),
+        		burst_traffic(Socket, PID, N-1, DstHost, DstPort);
+        	Err ->
+            		?ERROR_MSG("unable to send data: ~p", [Err]),
+			error
 	end.
 
 get(_Key, []) ->

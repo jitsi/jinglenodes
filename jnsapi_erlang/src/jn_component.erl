@@ -102,8 +102,9 @@ init(JID, Pass, Server, Port, PubIP, ChannelTimeout, WhiteDomain, MaxPerPeriod, 
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info(#received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ, from=From}, #state{}=State) ->
-  	case process_iq(Type, IQ, From, exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)), State) of 
+handle_info(#received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ, from=From}=RP, #state{}=State) ->
+  	?INFO_MSG("~p~n",[RP]),
+	case process_iq(Type, IQ, From, exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)), State) of 
 	{_, #state{}=NewState} -> {noreply, NewState};
 	_ -> {noreply, State}
 	end;

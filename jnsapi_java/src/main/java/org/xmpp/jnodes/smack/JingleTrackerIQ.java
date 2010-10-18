@@ -37,7 +37,7 @@ public class JingleTrackerIQ extends IQ {
             str.append("<").append(entry.getType().toString());
             str.append(" policy='").append(entry.getPolicy().toString()).append("'");
             str.append(" address='").append(entry.getJid()).append("'");
-            str.append(" protocol='").append(entry.getProtocol().toString()).append("'");
+            str.append(" protocol='").append(entry.getProtocol()).append("'");
             if (entry.isVerified()) {
                 str.append(" verified='").append(entry.isVerified()).append("'");
             }

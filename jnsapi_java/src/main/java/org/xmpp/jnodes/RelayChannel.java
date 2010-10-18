@@ -2,7 +2,6 @@ package org.xmpp.jnodes;
 
 import org.xmpp.jnodes.nio.DatagramListener;
 import org.xmpp.jnodes.nio.ListenerDatagramChannel;
-import org.xmpp.jnodes.nio.LocalIPResolver;
 import org.xmpp.jnodes.nio.SelDatagramChannel;
 
 import java.io.IOException;
@@ -19,6 +18,10 @@ public class RelayChannel {
     private final SocketAddress addressB;
     private SocketAddress lastReceivedA;
     private SocketAddress lastReceivedB;
+    private final ListenerDatagramChannel channelA_;
+    private final ListenerDatagramChannel channelB_;
+    private SocketAddress lastReceivedA_;
+    private SocketAddress lastReceivedB_;
     private long lastReceivedTimeA;
     private long lastReceivedTimeB;
     private final int portA;
@@ -26,17 +29,15 @@ public class RelayChannel {
     private final String ip;
     private Object attachment;
 
-    public static RelayChannel createLocalRelayChannel() throws IOException {
-
-        final String ip = LocalIPResolver.getLocalIP();
-        int range = 50000;
+    public static RelayChannel createLocalRelayChannel(final String host, final int minPort, final int maxPort) throws IOException {
+        int range = maxPort - minPort;
         IOException be = null;
 
         for (int t = 0; t < 50; t++) {
             try {
-                int a = Math.round((int) (Math.random() * 10000)) + range;
+                int a = Math.round((int) (Math.random() * range)) + minPort;
                 a = a % 2 == 0 ? a : a + 1;
-                return new RelayChannel(ip, a, a + 1);
+                return new RelayChannel(host, a);
             } catch (BindException e) {
                 be = e;
             } catch (IOException e) {
@@ -46,7 +47,9 @@ public class RelayChannel {
         throw be;
     }
 
-    public RelayChannel(final String host, final int portA, final int portB) throws IOException {
+    public RelayChannel(final String host, final int portA) throws IOException {
+
+        final int portB = portA + 2;
 
         addressA = new InetSocketAddress(host, portA);
         addressB = new InetSocketAddress(host, portB);
@@ -87,6 +90,43 @@ public class RelayChannel {
 
         this.portA = portA;
         this.portB = portB;
+
+        // RTCP Support
+        SocketAddress addressA_ = new InetSocketAddress(host, portA + 1);
+        SocketAddress addressB_ = new InetSocketAddress(host, portB + 1);
+
+        channelA_ = SelDatagramChannel.open(null, addressA_);
+        channelB_ = SelDatagramChannel.open(null, addressB_);
+
+        channelA_.setDatagramListener(new DatagramListener() {
+            public void datagramReceived(final ListenerDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
+                lastReceivedA_ = address;
+
+                if (lastReceivedB_ != null) {
+                    try {
+                        buffer.flip();
+                        channelB_.send(buffer, lastReceivedB_);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+
+        channelB_.setDatagramListener(new DatagramListener() {
+            public void datagramReceived(final ListenerDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
+                lastReceivedB_ = address;
+                if (lastReceivedA_ != null) {
+                    try {
+                        buffer.flip();
+                        channelA_.send(buffer, lastReceivedA_);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+
         this.ip = host;
     }
 
@@ -137,6 +177,17 @@ public class RelayChannel {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        try {
+            channelA_.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            channelB_.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 
 }

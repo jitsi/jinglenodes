@@ -26,19 +26,19 @@ public class JingleNodesProvider implements IQProvider {
                 if (elementName.equals(JingleChannelIQ.NAME) && namespace.equals(JingleChannelIQ.NAMESPACE)) {
 
                     final String protocol = parser.getAttributeValue(null, "protocol");
-                    final String porta = parser.getAttributeValue(null, "porta");
-                    final String portb = parser.getAttributeValue(null, "portb");
+                    final String porta = parser.getAttributeValue(null, "localport");
+                    final String portb = parser.getAttributeValue(null, "remoteport");
                     final String host = parser.getAttributeValue(null, "host");
 
                     try {
                         iq = new JingleChannelIQ();
-                        iq.setProtocol(protocol == null ? JingleChannelIQ.Protocol.udp : JingleChannelIQ.Protocol.valueOf(protocol));
+                        iq.setProtocol(protocol == null ? JingleChannelIQ.UDP : protocol);
                         if (host != null)
                             iq.setHost(host);
                         if (porta != null)
-                            iq.setPorta(Integer.valueOf(porta));
+                            iq.setLocalport(Integer.valueOf(porta));
                         if (portb != null)
-                            iq.setPortb(Integer.valueOf(portb));
+                            iq.setRemoteport(Integer.valueOf(portb));
                     } catch (final IllegalFormatException e) {
                         e.printStackTrace();
                     } catch (NumberFormatException e) {

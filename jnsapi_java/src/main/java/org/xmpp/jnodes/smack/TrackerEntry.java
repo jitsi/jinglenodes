@@ -17,10 +17,10 @@ public class TrackerEntry {
     private Type type;
     private Policy policy;
     private boolean verified = false;
-    private JingleChannelIQ.Protocol protocol = JingleChannelIQ.Protocol.udp;
+    private String protocol = JingleChannelIQ.UDP;
     private String jid;
 
-    public TrackerEntry(final Type type, final Policy policy, final String jid, final JingleChannelIQ.Protocol protocol) {
+    public TrackerEntry(final Type type, final Policy policy, final String jid, final String protocol) {
         this.type = type;
         this.policy = policy;
         this.jid = jid;
@@ -59,11 +59,11 @@ public class TrackerEntry {
         this.policy = policy;
     }
 
-    public JingleChannelIQ.Protocol getProtocol() {
+    public String getProtocol() {
         return protocol;
     }
 
-    public void setProtocol(JingleChannelIQ.Protocol protocol) {
+    public void setProtocol(String protocol) {
         this.protocol = protocol;
     }
 }

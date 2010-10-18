@@ -4,18 +4,17 @@ import org.jivesoftware.smack.packet.IQ;
 
 public class JingleChannelIQ extends IQ {
 
-    public static final String NAME = "candidate";
+    public static final String NAME = "channel";
     public static final String NAMESPACE = "http://jabber.org/protocol/jinglenodes#channel";
 
-    private Protocol protocol = Protocol.udp;
-    private String host;
-    private int porta = -1;
-    private int portb = -1;
-    private String id;
+    public static final String UDP= "udp";
+    public static final String TCP= "tcp";
 
-    public enum Protocol {
-        udp, tcp
-    }
+    private String protocol = UDP;
+    private String host;
+    private int localport = -1;
+    private int remoteport = -1;
+    private String id;
 
     public JingleChannelIQ() {
         this.setType(Type.GET);
@@ -26,10 +25,10 @@ public class JingleChannelIQ extends IQ {
         final StringBuilder str = new StringBuilder();
 
         str.append("<").append(NAME).append(" xmlns='").append(NAMESPACE).append("' protocol='").append(protocol).append("' ");
-        if (porta > 0 && portb > 0 && host != null) {
+        if (localport > 0 && remoteport > 0 && host != null) {
             str.append("host='").append(host).append("' ");
-            str.append("porta='").append(porta).append("' ");
-            str.append("portb='").append(portb).append("' ");
+            str.append("localport='").append(localport).append("' ");
+            str.append("remoteport='").append(remoteport).append("' ");
         }
         str.append("/>");
 
@@ -40,20 +39,20 @@ public class JingleChannelIQ extends IQ {
         return Type.GET.equals(this.getType());
     }
 
-    public Protocol getProtocol() {
+    public String getProtocol() {
         return protocol;
     }
 
-    public void setProtocol(Protocol protocol) {
+    public void setProtocol(String protocol) {
         this.protocol = protocol;
     }
 
-    public int getPortb() {
-        return portb;
+    public int getRemoteport() {
+        return remoteport;
     }
 
-    public void setPortb(int portb) {
-        this.portb = portb;
+    public void setRemoteport(int remoteport) {
+        this.remoteport = remoteport;
     }
 
     public String getHost() {
@@ -64,12 +63,12 @@ public class JingleChannelIQ extends IQ {
         this.host = host;
     }
 
-    public int getPorta() {
-        return porta;
+    public int getLocalport() {
+        return localport;
     }
 
-    public void setPorta(int porta) {
-        this.porta = porta;
+    public void setLocalport(int localport) {
+        this.localport = localport;
     }
 
     public String getId() {

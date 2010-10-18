@@ -19,7 +19,7 @@ public class SmackServiceNodeTest extends TestCase {
 
         LocalIPResolver.setOverrideIp("127.0.0.1");
 
-        final String server = "zero";
+        final String server = "localhost";
         final int port = 5222;
         final String user1 = "user1";
         final String pass1 = "user1";
@@ -56,7 +56,7 @@ public class SmackServiceNodeTest extends TestCase {
             assertTrue(ssn2.getChannels().size() > 0);
 
             for (int i = 0; i < 1; i++) {
-                assertTrue(RelayChannelTest.testDatagramChannelsExternal(iq.getPorta(), iq.getPortb()));
+                assertTrue(RelayChannelTest.testDatagramChannelsExternal(iq.getLocalport(), iq.getRemoteport()));
             }
         }
 
@@ -73,7 +73,7 @@ public class SmackServiceNodeTest extends TestCase {
             assertTrue(ssn1.getChannels().size() > 0);
 
             for (int i = 0; i < 1; i++) {
-                assertTrue(RelayChannelTest.testDatagramChannelsExternal(iq.getPorta(), iq.getPortb()));
+                assertTrue(RelayChannelTest.testDatagramChannelsExternal(iq.getLocalport(), iq.getRemoteport()));
             }
         }
 
@@ -91,36 +91,38 @@ public class SmackServiceNodeTest extends TestCase {
         Thread.sleep(500);
 
         for (int i = 0; i < pub; i++) {
-            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "p" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
+            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "p" + String.valueOf(i), JingleChannelIQ.UDP));
         }
         for (int i = 0; i < unk; i++) {
-            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "d" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
+            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "d" + String.valueOf(i), JingleChannelIQ.UDP));
         }
         for (int i = 0; i < ros; i++) {
-            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._roster, "r" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
+            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._roster, "r" + String.valueOf(i), JingleChannelIQ.UDP));
         }
 
         Thread.sleep(200);
-        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssn2.getConnection(), 10, 10, 50, JingleChannelIQ.Protocol.udp);
+        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssn2.getConnection(), 10, 10, 50, JingleChannelIQ.UDP);
         ssn2.addEntries(ma);
 
         Thread.sleep(500);
 
-        assertEquals(ma.getRelayEntries().size(), pub + unk);
+        assertEquals(pub + unk + 1, ma.getRelayEntries().size());
 
-        SmackServiceNode.MappedNodes mb = SmackServiceNode.searchServices(ssn1.getConnection(), 10, 10, 50, JingleChannelIQ.Protocol.udp);
+        SmackServiceNode.MappedNodes mb = SmackServiceNode.searchServices(ssn1.getConnection(), 10, 10, 50, JingleChannelIQ.UDP);
 
         Thread.sleep(500);
 
-        assertEquals(mb.getRelayEntries().size(), pub + unk);
+        assertEquals(mb.getRelayEntries().size(), pub + unk + 1);        
 
         ssn1.getConnection().disconnect();
         ssn2.getConnection().disconnect();
+        ssn3.getConnection().disconnect();
 
+        Thread.sleep(1500);
     }
 
     public void testTrackerEntry() {
-        TrackerEntry entry = new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "node", JingleChannelIQ.Protocol.udp);
+        TrackerEntry entry = new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "node", JingleChannelIQ.UDP);
 
         assertEquals(entry.getPolicy().toString(), "public");
         assertEquals(entry.getPolicy(), TrackerEntry.Policy.valueOf("_public"));
@@ -128,7 +130,7 @@ public class SmackServiceNodeTest extends TestCase {
         JingleTrackerIQ iq = new JingleTrackerIQ();
 
         for (int i = 0; i < 10; i++) {
-            iq.addEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "u" + String.valueOf(i), JingleChannelIQ.Protocol.udp));
+            iq.addEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "u" + String.valueOf(i), JingleChannelIQ.UDP));
         }
 
         System.out.println(iq.getChildElementXML());
@@ -158,13 +160,13 @@ public class SmackServiceNodeTest extends TestCase {
 
         for (int i = 0; i < users - 1; i++) {
             ssns.get(i).getConnection().getRoster().createEntry(ssns.get(i + 1).getConnection().getUser(), "test", new String[]{});
-            ssns.get(i + 1).addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, ssns.get(i + 1).getConnection().getUser(), JingleChannelIQ.Protocol.udp));
-            ssns.get(i).addTrackerEntry(new TrackerEntry(TrackerEntry.Type.tracker, TrackerEntry.Policy._public, ssns.get(i + 1).getConnection().getUser(), JingleChannelIQ.Protocol.udp));
+            ssns.get(i + 1).addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, ssns.get(i + 1).getConnection().getUser(), JingleChannelIQ.UDP));
+            ssns.get(i).addTrackerEntry(new TrackerEntry(TrackerEntry.Type.tracker, TrackerEntry.Policy._public, ssns.get(i + 1).getConnection().getUser(), JingleChannelIQ.UDP));
         }
 
         Thread.sleep(200);
 
-        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssns.get(0).getConnection(), users, users, users * 2, null);
+        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssns.get(0).getConnection(), users * 2, users, users * 2, null);
         Thread.sleep(200);
 
         assertTrue(ma.getRelayEntries().size() >= users - 1);
@@ -177,14 +179,15 @@ public class SmackServiceNodeTest extends TestCase {
 
             assertEquals(IQ.Type.RESULT, iq.getType());
 
-            assertTrue(RelayChannelTest.testDatagramChannelsExternal(iq.getPorta(), iq.getPortb()));
-            Thread.sleep(500);
+            assertTrue(RelayChannelTest.testDatagramChannelsExternal(iq.getLocalport(), iq.getRemoteport()));
+            Thread.sleep(200);
         }
 
         for (final SmackServiceNode sn : ssns) {
             sn.getConnection().disconnect();
         }
 
+        Thread.sleep(500);
     }
 
 }

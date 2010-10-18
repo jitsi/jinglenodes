@@ -9,20 +9,23 @@ import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.provider.ProviderManager;
 import org.jivesoftware.smackx.ServiceDiscoveryManager;
 import org.jivesoftware.smackx.packet.DiscoverItems;
+import org.jivesoftware.smackx.packet.DiscoverInfo;
 import org.xmpp.jnodes.RelayChannel;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SmackServiceNode implements ConnectionListener, PacketListener {
 
     private final XMPPConnection connection;
     private final ConcurrentHashMap<String, RelayChannel> channels = new ConcurrentHashMap<String, RelayChannel>();
-    private final ConcurrentHashMap<String, TrackerEntry> trackerEntries = new ConcurrentHashMap<String, TrackerEntry>();
+    private final LinkedHashMap<String, TrackerEntry> trackerEntries = new LinkedHashMap<String, TrackerEntry>();
     private long timeout = 60000;
 
     private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
@@ -33,15 +36,15 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         ProviderManager.getInstance().addIQProvider(JingleTrackerIQ.NAME, JingleTrackerIQ.NAMESPACE, new JingleTrackerProvider());
     }
 
-    public SmackServiceNode(final XMPPConnection connection, final long timeout) throws XMPPException {
+    public SmackServiceNode(final XMPPConnection connection, final long timeout) {
         this.connection = connection;
         this.timeout = timeout;
         setup();
     }
 
     public SmackServiceNode(final String server, final int port, final long timeout) {
-        final ConnectionConfiguration conf = new ConnectionConfiguration(server, port);
-        conf.setSASLAuthenticationEnabled(true);
+        final ConnectionConfiguration conf = new ConnectionConfiguration(server, port, server);
+        conf.setSASLAuthenticationEnabled(false);
         conf.setSecurityMode(ConnectionConfiguration.SecurityMode.disabled);
         connection = new XMPPConnection(conf);
         this.timeout = timeout;
@@ -86,7 +89,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
             }
         }, timeout, timeout, TimeUnit.MILLISECONDS);
 
-        ServiceDiscoveryManager.getInstanceFor(connection).addFeature(JingleChannelIQ.NAMESPACE);
+        //ServiceDiscoveryManager.getInstanceFor(connection).addFeature(JingleChannelIQ.NAMESPACE);
         connection.addPacketListener(this, new PacketFilter() {
             public boolean accept(Packet packet) {
                 return packet instanceof JingleChannelIQ || packet instanceof JingleTrackerIQ;
@@ -129,7 +132,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
     protected IQ createUdpChannel(final JingleChannelIQ iq) {
 
         try {
-            final RelayChannel rc = RelayChannel.createLocalRelayChannel();
+            final RelayChannel rc = RelayChannel.createLocalRelayChannel("0.0.0.0", 10000, 40000);
             final int id = ids.incrementAndGet();
             final String sId = String.valueOf(id);
             rc.setAttachment(sId);
@@ -142,8 +145,8 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
             result.setFrom(iq.getTo());
             result.setPacketID(iq.getPacketID());
             result.setHost(rc.getIp());
-            result.setPorta(rc.getPortA());
-            result.setPortb(rc.getPortB());
+            result.setLocalport(rc.getPortA());
+            result.setRemoteport(rc.getPortB());
             result.setId(sId);
 
             return result;
@@ -214,7 +217,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         return result instanceof JingleTrackerIQ ? (JingleTrackerIQ) result : null;
     }
 
-    private static void deepSearch(final XMPPConnection xmppConnection, final int maxEntries, final String startPoint, final MappedNodes mappedNodes, final int maxDepth, final int maxSearchNodes, final JingleChannelIQ.Protocol protocol, final ConcurrentHashMap<String, String> visited) {
+    private static void deepSearch(final XMPPConnection xmppConnection, final int maxEntries, final String startPoint, final MappedNodes mappedNodes, final int maxDepth, final int maxSearchNodes, final String protocol, final ConcurrentHashMap<String, String> visited) {
         if (xmppConnection == null || !xmppConnection.isConnected()) {
             return;
         }
@@ -244,11 +247,11 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         }
     }
 
-    public static MappedNodes searchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final JingleChannelIQ.Protocol protocol) {
+    public static MappedNodes searchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol) {
         return searchServices(new ConcurrentHashMap<String, String>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol);
     }
 
-    private static MappedNodes searchServices(final ConcurrentHashMap<String, String> visited, final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final JingleChannelIQ.Protocol protocol) {
+    private static MappedNodes searchServices(final ConcurrentHashMap<String, String> visited, final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol) {
         if (xmppConnection == null || !xmppConnection.isConnected()) {
             return null;
         }
@@ -273,7 +276,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         return mappedNodes;
     }
 
-    private static void searchDiscoItems(final XMPPConnection xmppConnection, final int maxEntries, final String startPoint, final MappedNodes mappedNodes, final int maxDepth, final int maxSearchNodes, final JingleChannelIQ.Protocol protocol, final ConcurrentHashMap<String, String> visited) {
+    private static void searchDiscoItems(final XMPPConnection xmppConnection, final int maxEntries, final String startPoint, final MappedNodes mappedNodes, final int maxDepth, final int maxSearchNodes, final String protocol, final ConcurrentHashMap<String, String> visited) {
         final DiscoverItems items = new DiscoverItems();
         items.setTo(startPoint);
         PacketCollector collector = xmppConnection.createPacketCollector(new PacketIDFilter(items.getPacketID()));
@@ -331,5 +334,18 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         for (final TrackerEntry t : entries.getTrackerEntries().values()) {
             addTrackerEntry(t);
         }
+    }
+
+    public LinkedHashMap<String, TrackerEntry> getTrackerEntries() {
+        return trackerEntries;
+    }
+
+    public TrackerEntry getPreferedRelay() {
+        for (final TrackerEntry trackerEntry : trackerEntries.values()) {
+            if (TrackerEntry.Type.relay.equals(trackerEntry.getType())) {
+                return trackerEntry;
+            }
+        }        
+        return null;
     }
 }

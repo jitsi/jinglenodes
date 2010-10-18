@@ -29,7 +29,7 @@ public class JingleTrackerProvider implements IQProvider {
                     continue;
                 }
 
-                final JingleChannelIQ.Protocol protocol = JingleChannelIQ.Protocol.valueOf(parser.getAttributeValue(null, "protocol"));
+                final String protocol = parser.getAttributeValue(null, "protocol");
                 final TrackerEntry.Policy policy = TrackerEntry.Policy.valueOf("_" + parser.getAttributeValue(null, "policy"));
                 final String address = parser.getAttributeValue(null, "address");
                 final String verified = parser.getAttributeValue(null, "verified");
@@ -47,8 +47,9 @@ public class JingleTrackerProvider implements IQProvider {
                     done = true;
                 }
             }
-            if (!done)
+            if (!done) {
                 parser.next();
+            }
         }
 
         return iq;

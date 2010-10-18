@@ -107,7 +107,7 @@ public class RelayChannelTest extends TestCase {
             if (i % 2 == 0) {
                 for (int t = 0; t < num; t++) {
                     try {
-                        final RelayChannel c = new RelayChannel(localIP, relayRange + l, relayRange + l + 1);
+                        final RelayChannel c = new RelayChannel(localIP, relayRange + l);
                         rc.add(c);
                         break;
                     } catch (BindException e) {
@@ -342,5 +342,12 @@ public class RelayChannelTest extends TestCase {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    public void testRelayChannel() throws IOException {
+        final RelayChannel rc = RelayChannel.createLocalRelayChannel("0.0.0.0",10000,30000);
+
+        assertNotNull(rc);
+
     }
 }

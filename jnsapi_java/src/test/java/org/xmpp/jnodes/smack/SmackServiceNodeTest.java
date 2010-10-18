@@ -112,7 +112,9 @@ public class SmackServiceNodeTest extends TestCase {
 
         Thread.sleep(500);
 
-        assertEquals(mb.getRelayEntries().size(), pub + unk + 1);        
+        assertEquals(mb.getRelayEntries().size(), pub + unk + 1);
+
+        System.out.println("Prefered Relay: " + ssn2.getPreferedRelay().getJid());
 
         ssn1.getConnection().disconnect();
         ssn2.getConnection().disconnect();

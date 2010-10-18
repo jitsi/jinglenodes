@@ -15,6 +15,8 @@ import org.xmpp.jnodes.RelayChannel;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +27,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
 
     private final XMPPConnection connection;
     private final ConcurrentHashMap<String, RelayChannel> channels = new ConcurrentHashMap<String, RelayChannel>();
-    private final LinkedHashMap<String, TrackerEntry> trackerEntries = new LinkedHashMap<String, TrackerEntry>();
+    private final Map<String, TrackerEntry> trackerEntries = Collections.synchronizedMap(new LinkedHashMap<String, TrackerEntry>());
     private long timeout = 60000;
 
     private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
@@ -293,14 +295,14 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
     }
 
     public static class MappedNodes {
-        final ConcurrentHashMap<String, TrackerEntry> relayEntries = new ConcurrentHashMap<String, TrackerEntry>();
-        final ConcurrentHashMap<String, TrackerEntry> trackerEntries = new ConcurrentHashMap<String, TrackerEntry>();
+        final Map<String, TrackerEntry> relayEntries = Collections.synchronizedMap(new LinkedHashMap<String, TrackerEntry>());
+        final Map<String, TrackerEntry> trackerEntries = Collections.synchronizedMap(new LinkedHashMap<String, TrackerEntry>());
 
-        public ConcurrentHashMap<String, TrackerEntry> getRelayEntries() {
+        public Map<String, TrackerEntry> getRelayEntries() {
             return relayEntries;
         }
 
-        public ConcurrentHashMap<String, TrackerEntry> getTrackerEntries() {
+        public Map<String, TrackerEntry> getTrackerEntries() {
             return trackerEntries;
         }
     }
@@ -336,7 +338,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         }
     }
 
-    public LinkedHashMap<String, TrackerEntry> getTrackerEntries() {
+    public Map<String, TrackerEntry> getTrackerEntries() {
         return trackerEntries;
     }
 
@@ -345,7 +347,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
             if (TrackerEntry.Type.relay.equals(trackerEntry.getType())) {
                 return trackerEntry;
             }
-        }        
+        }
         return null;
     }
 }

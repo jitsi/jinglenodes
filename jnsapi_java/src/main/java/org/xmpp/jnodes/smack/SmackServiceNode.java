@@ -266,11 +266,13 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         deepSearch(xmppConnection, maxEntries, xmppConnection.getHost(), mappedNodes, maxDepth - 1, maxSearchNodes, protocol, visited);
 
         // Request to Buddies
-        for (final RosterEntry re : xmppConnection.getRoster().getEntries()) {
-            for (final Iterator<Presence> i = xmppConnection.getRoster().getPresences(re.getUser()); i.hasNext();) {
-                final Presence presence = i.next();
-                if (presence.isAvailable()) {
-                    deepSearch(xmppConnection, maxEntries, presence.getFrom(), mappedNodes, maxDepth - 1, maxSearchNodes, protocol, visited);
+        if (xmppConnection.getRoster() != null) {
+            for (final RosterEntry re : xmppConnection.getRoster().getEntries()) {
+                for (final Iterator<Presence> i = xmppConnection.getRoster().getPresences(re.getUser()); i.hasNext();) {
+                    final Presence presence = i.next();
+                    if (presence.isAvailable()) {
+                        deepSearch(xmppConnection, maxEntries, presence.getFrom(), mappedNodes, maxDepth - 1, maxSearchNodes, protocol, visited);
+                    }
                 }
             }
         }

@@ -3,7 +3,6 @@ package org.xmpp.jnodes;
 import junit.framework.TestCase;
 import org.junit.Ignore;
 import org.xmpp.jnodes.nio.DatagramListener;
-import org.xmpp.jnodes.nio.ListenerDatagramChannel;
 import org.xmpp.jnodes.nio.MockSocket;
 import org.xmpp.jnodes.nio.SelDatagramChannel;
 
@@ -34,7 +33,7 @@ public class RelayChannelTest extends TestCase {
                 public void run() {
                     try {
                         socketTest(new MockSocket.ChannelProvider() {
-                            public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
+                            public SelDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
                                 return SelDatagramChannel.open(datagramListener, address);
                             }
 
@@ -75,7 +74,7 @@ public class RelayChannelTest extends TestCase {
         boolean f = true;
         for (int i = 0; i < 1 && f; i++) {
             f = socketTest(new MockSocket.ChannelProvider() {
-                public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
+                public SelDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
                     return SelDatagramChannel.open(datagramListener, address);
                 }
 

@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class MockSocket {
     public interface ChannelProvider {
-        public ListenerDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException;
+        public SelDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException;
 
         public String getName();
     }
@@ -19,7 +19,7 @@ public class MockSocket {
     final private byte[] b;
     final private AtomicInteger i;
     final private SocketAddress address;
-    final private ListenerDatagramChannel channel;
+    final private SelDatagramChannel channel;
     final private ByteBuffer expectedBuffer;
 
     public MockSocket(final String localIP, final int port, final ChannelProvider provider) throws IOException {
@@ -30,7 +30,7 @@ public class MockSocket {
         address = new InetSocketAddress(localIP, port);
 
         final DatagramListener dl = new DatagramListener() {
-            public void datagramReceived(final ListenerDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
+            public void datagramReceived(final SelDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
                 try {
                     final int aux = buffer.position();
                     final byte[] bt = new byte[aux];
@@ -59,7 +59,7 @@ public class MockSocket {
         return msg;
     }
 
-    public ListenerDatagramChannel getChannel() {
+    public SelDatagramChannel getChannel() {
         return channel;
     }
 

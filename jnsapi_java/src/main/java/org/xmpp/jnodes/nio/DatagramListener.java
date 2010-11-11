@@ -5,6 +5,6 @@ import java.nio.ByteBuffer;
 
 public interface DatagramListener {
 
-    public void datagramReceived(ListenerDatagramChannel channel, ByteBuffer buffer, SocketAddress address);
+    public void datagramReceived(SelDatagramChannel channel, ByteBuffer buffer, SocketAddress address);
 
 }

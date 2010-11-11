@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class SelDatagramChannel implements ListenerDatagramChannel {
+public class SelDatagramChannel {
 
     private final static ExecutorService executorService = Executors.newFixedThreadPool(10);
     private static Selector selector;
@@ -25,7 +25,9 @@ public class SelDatagramChannel implements ListenerDatagramChannel {
         try {
             selector = Selector.open();
 
-            while (!selector.isOpen()) Thread.yield();
+            while (!selector.isOpen()) {
+                Thread.yield();
+            }
 
             final Runnable task = new Runnable() {
                 public void run() {

@@ -1,7 +1,6 @@
 package org.xmpp.jnodes;
 
 import org.xmpp.jnodes.nio.DatagramListener;
-import org.xmpp.jnodes.nio.ListenerDatagramChannel;
 import org.xmpp.jnodes.nio.SelDatagramChannel;
 
 import java.io.IOException;
@@ -12,16 +11,16 @@ import java.nio.ByteBuffer;
 
 public class RelayChannel {
 
-    private final ListenerDatagramChannel channelA;
-    private final ListenerDatagramChannel channelB;
+    private final SelDatagramChannel channelA;
+    private final SelDatagramChannel channelB;
     private final SocketAddress addressA;
     private final SocketAddress addressB;
     private SocketAddress lastReceivedA;
     private SocketAddress lastReceivedB;
-    private final ListenerDatagramChannel channelA_;
-    private final ListenerDatagramChannel channelB_;
+    private final SelDatagramChannel channelA_;
+    private final SelDatagramChannel channelB_;
     private SocketAddress lastReceivedA_;
-    private SocketAddress lastReceivedB_;
+    private SocketAddress lastReceivedB_;        
     private long lastReceivedTimeA;
     private long lastReceivedTimeB;
     private final int portA;
@@ -58,7 +57,7 @@ public class RelayChannel {
         channelB = SelDatagramChannel.open(null, addressB);
 
         channelA.setDatagramListener(new DatagramListener() {
-            public void datagramReceived(final ListenerDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
+            public void datagramReceived(final SelDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
                 lastReceivedA = address;
                 lastReceivedTimeA = System.currentTimeMillis();
 
@@ -74,7 +73,7 @@ public class RelayChannel {
         });
 
         channelB.setDatagramListener(new DatagramListener() {
-            public void datagramReceived(final ListenerDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
+            public void datagramReceived(final SelDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
                 lastReceivedB = address;
                 lastReceivedTimeB = System.currentTimeMillis();
                 if (lastReceivedA != null) {
@@ -99,7 +98,7 @@ public class RelayChannel {
         channelB_ = SelDatagramChannel.open(null, addressB_);
 
         channelA_.setDatagramListener(new DatagramListener() {
-            public void datagramReceived(final ListenerDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
+            public void datagramReceived(final SelDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
                 lastReceivedA_ = address;
 
                 if (lastReceivedB_ != null) {
@@ -114,7 +113,7 @@ public class RelayChannel {
         });
 
         channelB_.setDatagramListener(new DatagramListener() {
-            public void datagramReceived(final ListenerDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
+            public void datagramReceived(final SelDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
                 lastReceivedB_ = address;
                 if (lastReceivedA_ != null) {
                     try {
@@ -187,7 +186,21 @@ public class RelayChannel {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
+    public SelDatagramChannel getChannelA() {
+        return channelA;
+    }
+
+    public SelDatagramChannel getChannelB() {
+        return channelB;
+    }
+
+    public SelDatagramChannel getChannelA_() {
+        return channelA_;
+    }
+
+    public SelDatagramChannel getChannelB_() {
+        return channelB_;
+    }
 }

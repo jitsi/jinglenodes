@@ -91,7 +91,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
             }
         }, timeout, timeout, TimeUnit.MILLISECONDS);
 
-        //ServiceDiscoveryManager.getInstanceFor(connection).addFeature(JingleChannelIQ.NAMESPACE);
+        ServiceDiscoveryManager.getInstanceFor(connection).addFeature(JingleChannelIQ.NAMESPACE);
         connection.addPacketListener(this, new PacketFilter() {
             public boolean accept(Packet packet) {
                 return packet instanceof JingleChannelIQ || packet instanceof JingleTrackerIQ;
@@ -260,7 +260,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
 
         final MappedNodes mappedNodes = new MappedNodes();
 
-        searchDiscoItems(xmppConnection, maxEntries, xmppConnection.getHost(), mappedNodes, maxDepth - 1, maxSearchNodes, protocol, visited);
+        searchDiscoItems(xmppConnection, maxEntries, xmppConnection.getServiceName(), mappedNodes, maxDepth - 1, maxSearchNodes, protocol, visited);
 
         // Request to Server
         deepSearch(xmppConnection, maxEntries, xmppConnection.getHost(), mappedNodes, maxDepth - 1, maxSearchNodes, protocol, visited);

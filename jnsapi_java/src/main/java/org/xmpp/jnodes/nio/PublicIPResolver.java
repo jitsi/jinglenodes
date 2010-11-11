@@ -116,40 +116,51 @@ public class PublicIPResolver {
     }
 
     public static InetSocketAddress getPublicAddress(final String stunServer, final int port) {
-        final Header[] h = new Header[1];
         int lport = 10002;
 
         for (int t = 0; t < 3; t++) {
             try {
-                final SelDatagramChannel channel = SelDatagramChannel.open(new DatagramListener() {
-                    public void datagramReceived(ListenerDatagramChannel channel, ByteBuffer buffer, SocketAddress address) {
-                        final byte b[] = new byte[buffer.position()];
-                        buffer.rewind();
-                        buffer.get(b, 0, b.length);
-                        h[0] = parseResponse(b);
-                    }
-                }, new InetSocketAddress(System.getProperty("os.name").toLowerCase().indexOf("win") > -1 ? LocalIPResolver.getLocalIP() : "0.0.0.0", lport));
+                final SelDatagramChannel channel = SelDatagramChannel.open(null, new InetSocketAddress(System.getProperty("os.name").toLowerCase().indexOf("win") > -1 ? LocalIPResolver.getLocalIP() : "0.0.0.0", lport));
 
-                try {
-                    channel.send(createSTUNChangeRequest(), new InetSocketAddress(stunServer, port));
-                    Thread.sleep(100);
-                    for (int i = 0; i < 5; i++) {
-                        Thread.sleep(100);
-                        if (h[0] != null) {
-                            return h[0].getAddress();
-                        }
-                        if (i % 2 == 0) {
-                            channel.send(createSTUNChangeRequest(), new InetSocketAddress(stunServer, port));
-                        }
-                    }
-                    return null;
-                } catch (InterruptedException e) {
-                    return null;
-                }
+                return getPublicAddress(channel, stunServer, port);
+
             } catch (IOException e) {
                 lport += r.nextInt(10) + 1;
             }
         }
         return null;
+    }
+
+    public static InetSocketAddress getPublicAddress(final SelDatagramChannel channel, final String stunServer, final int port) {
+        final Header[] h = new Header[1];
+
+        try {
+
+            channel.setDatagramListener(new DatagramListener() {
+                public void datagramReceived(SelDatagramChannel channel, ByteBuffer buffer, SocketAddress address) {
+                    final byte b[] = new byte[buffer.position()];
+                    buffer.rewind();
+                    buffer.get(b, 0, b.length);
+                    h[0] = parseResponse(b);
+                }
+            });
+
+            channel.send(createSTUNChangeRequest(), new InetSocketAddress(stunServer, port));
+            Thread.sleep(100);
+            for (int i = 0; i < 5; i++) {
+                Thread.sleep(100);
+                if (h[0] != null) {
+                    return h[0].getAddress();
+                }
+                if (i % 2 == 0) {
+                    channel.send(createSTUNChangeRequest(), new InetSocketAddress(stunServer, port));
+                }
+            }
+            return null;
+        } catch (IOException e) {
+            return null;
+        } catch (InterruptedException e) {
+            return null;
+        }
     }
 }

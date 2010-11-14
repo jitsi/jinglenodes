@@ -120,7 +120,7 @@ public class PublicIPResolver {
 
         for (int t = 0; t < 3; t++) {
             try {
-                final SelDatagramChannel channel = SelDatagramChannel.open(null, new InetSocketAddress(System.getProperty("os.name").toLowerCase().indexOf("win") > -1 ? LocalIPResolver.getLocalIP() : "0.0.0.0", lport));
+                final SelDatagramChannel channel = SelDatagramChannel.open(null, new InetSocketAddress(System.getProperty("os.name")!=null&&System.getProperty("os.name").toLowerCase().indexOf("win") > -1 ? LocalIPResolver.getLocalIP() : "0.0.0.0", lport));
 
                 return getPublicAddress(channel, stunServer, port);
 

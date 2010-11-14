@@ -8,7 +8,7 @@
     <groupId>org.xmpp</groupId>
     <artifactId>jnsapi</artifactId>
     <packaging>jar</packaging>
-    <version>0.0.2</version>
+    <version>0.0.3</version>
     <name>jnsapi</name>                                              
     <url>http://www.xmppjingle.org</url>
 

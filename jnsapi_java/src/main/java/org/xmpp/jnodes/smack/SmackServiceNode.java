@@ -17,10 +17,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Collections;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SmackServiceNode implements ConnectionListener, PacketListener {
@@ -29,8 +26,8 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
     private final ConcurrentHashMap<String, RelayChannel> channels = new ConcurrentHashMap<String, RelayChannel>();
     private final Map<String, TrackerEntry> trackerEntries = Collections.synchronizedMap(new LinkedHashMap<String, TrackerEntry>());
     private long timeout = 60000;
-
-    private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
+    private final static ExecutorService executorService = Executors.newCachedThreadPool(); 
+    private final ScheduledThreadPoolExecutor scheduledExecutor = new ScheduledThreadPoolExecutor(1);
     private final AtomicInteger ids = new AtomicInteger(0);
 
     static {
@@ -77,7 +74,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
     }
 
     private void setup() {
-        executor.scheduleWithFixedDelay(new Runnable() {
+        scheduledExecutor.scheduleWithFixedDelay(new Runnable() {
             public void run() {
                 for (final RelayChannel c : channels.values()) {
                     final long current = System.currentTimeMillis();
@@ -91,7 +88,6 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
             }
         }, timeout, timeout, TimeUnit.MILLISECONDS);
 
-        ServiceDiscoveryManager.getInstanceFor(connection).addFeature(JingleChannelIQ.NAMESPACE);
         connection.addPacketListener(this, new PacketFilter() {
             public boolean accept(Packet packet) {
                 return packet instanceof JingleChannelIQ || packet instanceof JingleTrackerIQ;
@@ -101,7 +97,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
 
     public void connectionClosed() {
         closeAllChannels();
-        executor.shutdownNow();
+        scheduledExecutor.shutdownNow();
     }
 
     private void closeAllChannels() {
@@ -249,16 +245,26 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         }
     }
 
-    public static MappedNodes searchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol) {
-        return searchServices(new ConcurrentHashMap<String, String>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol);
+    public static MappedNodes aSyncSearchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol) {
+        final MappedNodes mappedNodes = new MappedNodes();
+        final Runnable bgTask = new Runnable(){
+            @Override
+            public void run() {
+                searchServices(new ConcurrentHashMap<String, String>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol, mappedNodes);
+            }
+        };
+        executorService.submit(bgTask);
+        return mappedNodes;
     }
 
-    private static MappedNodes searchServices(final ConcurrentHashMap<String, String> visited, final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol) {
+    public static MappedNodes searchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol) {
+        return searchServices(new ConcurrentHashMap<String, String>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol, new MappedNodes());
+    }
+
+    private static MappedNodes searchServices(final ConcurrentHashMap<String, String> visited, final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol, final MappedNodes mappedNodes) {
         if (xmppConnection == null || !xmppConnection.isConnected()) {
             return null;
         }
-
-        final MappedNodes mappedNodes = new MappedNodes();
 
         searchDiscoItems(xmppConnection, maxEntries, xmppConnection.getServiceName(), mappedNodes, maxDepth - 1, maxSearchNodes, protocol, visited);
 

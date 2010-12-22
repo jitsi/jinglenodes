@@ -192,4 +192,58 @@ public class SmackServiceNodeTest extends TestCase {
         Thread.sleep(500);
     }
 
+    @Ignore("Meant to be ran manually")
+    public void testDeepASyncSearch() throws InterruptedException, XMPPException, IOException {
+
+        LocalIPResolver.setOverrideIp("127.0.0.1");
+
+        final String server = "localhost";
+        final int port = 5222;
+        final int timeout = 6000;
+        final String pre = "user";
+        final int users = 7;
+
+        final List<SmackServiceNode> ssns = new ArrayList<SmackServiceNode>();
+
+        for (int i = 1; i <= users; i++) {
+            final SmackServiceNode ssn = new SmackServiceNode(server, port, timeout);
+            ssn.connect(pre + i, pre + i, true, Roster.SubscriptionMode.accept_all);
+            ssns.add(ssn);
+            System.out.println("Connected " + pre + i);
+        }
+
+        Thread.sleep(250);
+
+        for (int i = 0; i < users - 1; i++) {
+            ssns.get(i).getConnection().getRoster().createEntry(ssns.get(i + 1).getConnection().getUser(), "test", new String[]{});
+            ssns.get(i + 1).addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, ssns.get(i + 1).getConnection().getUser(), JingleChannelIQ.UDP));
+            ssns.get(i).addTrackerEntry(new TrackerEntry(TrackerEntry.Type.tracker, TrackerEntry.Policy._public, ssns.get(i + 1).getConnection().getUser(), JingleChannelIQ.UDP));
+        }
+
+        Thread.sleep(200);
+
+        SmackServiceNode.MappedNodes ma = SmackServiceNode.aSyncSearchServices(ssns.get(0).getConnection(), users * 2, users, users * 2, null);
+        Thread.sleep(2000);
+
+        assertTrue(ma.getRelayEntries().size() >= users - 1);
+        assertTrue(ma.getTrackerEntries().size() >= users - 2);
+
+        for (final TrackerEntry entry : ma.getRelayEntries().values()) {
+            JingleChannelIQ iq = SmackServiceNode.getChannel(ssns.get(0).getConnection(), entry.getJid());
+
+            assertTrue(iq != null);
+
+            assertEquals(IQ.Type.RESULT, iq.getType());
+
+            assertTrue(RelayChannelTest.testDatagramChannelsExternal(iq.getLocalport(), iq.getRemoteport()));
+            Thread.sleep(200);
+        }
+
+        for (final SmackServiceNode sn : ssns) {
+            sn.getConnection().disconnect();
+        }
+
+        Thread.sleep(500);
+    }
+
 }

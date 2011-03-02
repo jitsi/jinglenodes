@@ -101,20 +101,20 @@ public class SmackServiceNodeTest extends TestCase {
         }
 
         Thread.sleep(200);
-        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssn2.getConnection(), 10, 10, 50, JingleChannelIQ.UDP);
+        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssn2.getConnection(), 10, 10, 50, JingleChannelIQ.UDP, false);
         ssn2.addEntries(ma);
 
         Thread.sleep(500);
 
         assertEquals(pub + unk + 1, ma.getRelayEntries().size());
 
-        SmackServiceNode.MappedNodes mb = SmackServiceNode.searchServices(ssn1.getConnection(), 10, 10, 50, JingleChannelIQ.UDP);
+        SmackServiceNode.MappedNodes mb = SmackServiceNode.searchServices(ssn1.getConnection(), 10, 10, 50, JingleChannelIQ.UDP, false);
 
         Thread.sleep(500);
 
         assertEquals(mb.getRelayEntries().size(), pub + unk + 1);
 
-        System.out.println("Prefered Relay: " + ssn2.getPreferedRelay().getJid());
+        System.out.println("Preferred Relay: " + ssn2.getPreferedRelay().getJid());
 
         ssn1.getConnection().disconnect();
         ssn2.getConnection().disconnect();
@@ -168,7 +168,7 @@ public class SmackServiceNodeTest extends TestCase {
 
         Thread.sleep(200);
 
-        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssns.get(0).getConnection(), users * 2, users, users * 2, null);
+        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssns.get(0).getConnection(), users * 2, users, users * 2, null, false);
         Thread.sleep(200);
 
         assertTrue(ma.getRelayEntries().size() >= users - 1);
@@ -222,7 +222,7 @@ public class SmackServiceNodeTest extends TestCase {
 
         Thread.sleep(200);
 
-        SmackServiceNode.MappedNodes ma = SmackServiceNode.aSyncSearchServices(ssns.get(0).getConnection(), users * 2, users, users * 2, null);
+        SmackServiceNode.MappedNodes ma = SmackServiceNode.aSyncSearchServices(ssns.get(0).getConnection(), users * 2, users, users * 2, null, false);
         Thread.sleep(2000);
 
         assertTrue(ma.getRelayEntries().size() >= users - 1);

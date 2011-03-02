@@ -245,23 +245,23 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         }
     }
 
-    public static MappedNodes aSyncSearchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol) {
+    public static MappedNodes aSyncSearchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol, final boolean searchBuddies) {
         final MappedNodes mappedNodes = new MappedNodes();
         final Runnable bgTask = new Runnable(){
             @Override
             public void run() {
-                searchServices(new ConcurrentHashMap<String, String>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol, mappedNodes);
+                searchServices(new ConcurrentHashMap<String, String>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol, searchBuddies, mappedNodes);
             }
         };
         executorService.submit(bgTask);
         return mappedNodes;
     }
 
-    public static MappedNodes searchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol) {
-        return searchServices(new ConcurrentHashMap<String, String>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol, new MappedNodes());
+    public static MappedNodes searchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol, final boolean searchBuddies) {
+        return searchServices(new ConcurrentHashMap<String, String>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol, searchBuddies, new MappedNodes());
     }
 
-    private static MappedNodes searchServices(final ConcurrentHashMap<String, String> visited, final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol, final MappedNodes mappedNodes) {
+    private static MappedNodes searchServices(final ConcurrentHashMap<String, String> visited, final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol, final boolean searchBuddies, final MappedNodes mappedNodes) {
         if (xmppConnection == null || !xmppConnection.isConnected()) {
             return null;
         }
@@ -272,7 +272,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         deepSearch(xmppConnection, maxEntries, xmppConnection.getHost(), mappedNodes, maxDepth - 1, maxSearchNodes, protocol, visited);
 
         // Request to Buddies
-        if (xmppConnection.getRoster() != null) {
+        if (xmppConnection.getRoster() != null && searchBuddies) {
             for (final RosterEntry re : xmppConnection.getRoster().getEntries()) {
                 for (final Iterator<Presence> i = xmppConnection.getRoster().getPresences(re.getUser()); i.hasNext();) {
                     final Presence presence = i.next();

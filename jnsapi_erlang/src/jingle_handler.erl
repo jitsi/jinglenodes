@@ -81,10 +81,10 @@ process_iq(_, IQ, _, _, _, #state{}=State) ->
 
 get_candidate_elem(Host, A, B, ID) ->
 	Raw_Elem = exmpp_xml:element(?NS_CHANNEL,?NAME_CHANNEL),
-        Elem_A = exmpp_xml:set_attribute(Raw_Elem, "localport", A),
-        Elem_B = exmpp_xml:set_attribute(Elem_A, "remoteport", B),
-	Elem_C = exmpp_xml:set_attribute(Elem_B, "id", jn_component:prepare_id(ID)),
-        exmpp_xml:set_attribute(Elem_C, "host", Host).
+        Elem_A = exmpp_xml:set_attribute(Raw_Elem, <<"localport">>, A),
+        Elem_B = exmpp_xml:set_attribute(Elem_A, <<"remoteport">>, B),
+	Elem_C = exmpp_xml:set_attribute(Elem_B, <<"id">>, jn_component:prepare_id(ID)),
+        exmpp_xml:set_attribute(Elem_C, <<"host">>, Host).
 
 allocate_relay(ChannelMonitor, U, PortMonitor) -> allocate_relay(ChannelMonitor, U, 5, PortMonitor).
 allocate_relay(_, U, 0, _) -> 

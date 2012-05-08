@@ -4,6 +4,7 @@
 -define(NAME_CHANNEL,'channel').
 -define(NS_JINGLE_NODES_s,"http://jabber.org/protocol/jinglenodes").
 -define(NS_JINGLE_NODES,'http://jabber.org/protocol/jinglenodes').
+-define(NS_JINGLE_NODES_EVENT, 'http://jabber.org/protocol/jinglenodes#event').
 -define(NAME_SERVICES,'services').
 -define(NS_CHANNEL_s,"http://jabber.org/protocol/jinglenodes#channel").
 -define(LOG_PATH, "./jn_component.log").
@@ -19,6 +20,15 @@
 
 %% API
 -export([pre_process_iq/4]).
+-export([notify_channel/4]).
+
+notify_channel(ID, User, Event, #state{jid=JID, xmppCom=XmppCom}=State) ->
+        Notify = exmpp_xml:element(?NS_JINGLE_NODES_EVENT, 'channel', [exmpp_xml:attribute('event', Event), exmpp_xml:attribute('id', ID)], []),
+        SetBare = exmpp_iq:set(?NS_JINGLE_NODES_EVENT, Notify),
+	SetTo = exmpp_xml:set_attribute(SetBare, to, User),	
+	SetFrom = exmpp_xml:set_attribute(SetTo, from, JID),
+        exmpp_component:send_packet(XmppCom, SetFrom),
+        {ok, State}.
 
 pre_process_iq(Type, IQ, From, State) ->
         ?INFO_MSG("Preparing: ~p~n On State:~p~n", [IQ, State]),

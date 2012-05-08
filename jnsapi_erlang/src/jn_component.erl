@@ -93,6 +93,10 @@ handle_info(#received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ, from
   	spawn(Handler, pre_process_iq, [Type, IQ, From, State]),
 	{noreply, State};
 
+handle_info({notify_channel, ID, User, Event}, #state{handler=Handler}=State) ->
+        spawn(Handler, notify_channel, [ID, User, Event, State]),
+        {noreply, State};
+
 handle_info({_, tcp_closed}, #state{jid=JID, server=Server, pass=Pass, port=Port}=State) ->
   ?INFO_MSG("Connection Closed. Trying to Reconnect...~n", []),
   {_, NewXmppCom} = make_connection(JID, Pass, Server, Port),
@@ -261,7 +265,7 @@ pull_port(#port_mgr{minPort=InitPort, maxPort=EndPort, port=P}) when P > EndPort
 pull_port(#port_mgr{minPort=InitPort, maxPort=EndPort, port=P}) ->
 	{P, #port_mgr{minPort=InitPort, maxPort=EndPort, port=P+4}}.
 
-check_relay(#relay{pid= PID, user=U, creationTime=CT}, Timeout) ->
+check_relay(#relay{pid= PID, user=U, id=ID, creationTime=CT}, Timeout) ->
 	{T, NP} = gen_server:call(PID, get_timestamp),	
 	Delta = timer:now_diff(now(), T)/1000,
 	Used =  timer:now_diff(T, CT),
@@ -269,6 +273,12 @@ check_relay(#relay{pid= PID, user=U, creationTime=CT}, Timeout) ->
 	Delta > Timeout ->
 		?INFO_MSG("Channel Killed: ~p Used for:~pms Processed:~p packets~n", [U, Used, NP]),
 		exit(PID, kill),
+		JnComp = whereis(jn_component),
+	 	case is_pid(JnComp) of
+			true ->
+				JnComp ! {notify_channel, ID, U, killed};
+			_ -> ok
+		end,
 		removed;
 	true -> 
 		ok

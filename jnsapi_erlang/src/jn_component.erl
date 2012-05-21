@@ -93,8 +93,8 @@ handle_info(#received_packet{packet_type=iq, type_attr=Type, raw_packet=IQ, from
   	spawn(Handler, pre_process_iq, [Type, IQ, From, State]),
 	{noreply, State};
 
-handle_info({notify_channel, ID, User, Event}, #state{handler=Handler}=State) ->
-        spawn(Handler, notify_channel, [ID, User, Event, State]),
+handle_info({notify_channel, ID, User, Event, Time}, #state{handler=Handler}=State) ->
+        spawn(Handler, notify_channel, [ID, User, Event, Time, State]),
         {noreply, State};
 
 handle_info({_, tcp_closed}, #state{jid=JID, server=Server, pass=Pass, port=Port}=State) ->
@@ -266,22 +266,32 @@ pull_port(#port_mgr{minPort=InitPort, maxPort=EndPort, port=P}) ->
 	{P, #port_mgr{minPort=InitPort, maxPort=EndPort, port=P+4}}.
 
 check_relay(#relay{pid= PID, user=U, id=ID, creationTime=CT}, Timeout) ->
-	{T, NP} = gen_server:call(PID, get_timestamp),	
-	Delta = timer:now_diff(now(), T)/1000,
-	Used =  timer:now_diff(T, CT),
+	{TL, TR, NP} = gen_server:call(PID, get_timestamp),	
+	DeltaL = timer:now_diff(now(), TL)/1000,
+	UsedL =  timer:now_diff(TL, CT),
+	DeltaR = timer:now_diff(now(), TR)/1000,
+        UsedR =  timer:now_diff(TR, CT),
+	Used = bigger(UsedL, UsedR),
 	if
-	Delta > Timeout ->
+	DeltaL > Timeout orelse DeltaR > Timeout ->
 		?INFO_MSG("Channel Killed: ~p Used for:~pms Processed:~p packets~n", [U, Used, NP]),
 		exit(PID, kill),
 		JnComp = whereis(jn_component),
 	 	case is_pid(JnComp) of
 			true ->
-				JnComp ! {notify_channel, ID, U, killed};
+				JnComp ! {notify_channel, ID, U, killed, Used};
 			_ -> ok
 		end,
 		removed;
 	true -> 
 		ok
+	end.
+
+bigger(A, A) -> A;
+bigger(A, B) -> 
+	case A > B of
+		true -> A;
+		_ -> B
 	end.
 
 check_relays(Relays, Timeout) ->

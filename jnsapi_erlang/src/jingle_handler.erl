@@ -20,15 +20,18 @@
 
 %% API
 -export([pre_process_iq/4]).
--export([notify_channel/4]).
+-export([notify_channel/5]).
 
-notify_channel(ID, User, Event, #state{jid=JID, xmppCom=XmppCom}=State) ->
-        Notify = exmpp_xml:element(?NS_JINGLE_NODES_EVENT, 'channel', [exmpp_xml:attribute('event', Event), exmpp_xml:attribute('id', ID)], []),
-        SetBare = exmpp_iq:set(?NS_JINGLE_NODES_EVENT, Notify),
-	SetTo = exmpp_xml:set_attribute(SetBare, to, User),	
+notify_channel(ID, {Node, Domain, Resource}, Event, Time, #state{jid=JID, xmppCom=XmppCom}=State) ->
+        ?INFO_MSG("Notify Details: ~p ~p ~p ~p~n", [ID, exmpp_jid:to_list(Node, Domain, Resource), Event, JID]),
+	Notify = exmpp_xml:element(?NS_JINGLE_NODES_EVENT, 'channel', [exmpp_xml:attribute('event', Event), exmpp_xml:attribute('id', jn_component:prepare_id(ID)), exmpp_xml:attribute('time', integer_to_list(Time))], []),
+        SetBare = exmpp_iq:set(?NS_COMPONENT_ACCEPT, Notify),
+	SetTo = exmpp_xml:set_attribute(SetBare, to, exmpp_jid:to_list(Node, Domain, Resource)),	
 	SetFrom = exmpp_xml:set_attribute(SetTo, from, JID),
         exmpp_component:send_packet(XmppCom, SetFrom),
-        {ok, State}.
+	?INFO_MSG("Notify Sent: ~p ~n", [SetFrom]),
+        {ok, State};
+notify_channel(_, _, _, _, #state{}=State)-> {ok, State}.
 
 pre_process_iq(Type, IQ, From, State) ->
         ?INFO_MSG("Preparing: ~p~n On State:~p~n", [IQ, State]),
@@ -91,10 +94,10 @@ process_iq(_, IQ, _, _, _, #state{}=State) ->
 
 get_candidate_elem(Host, A, B, ID) ->
 	Raw_Elem = exmpp_xml:element(?NS_CHANNEL,?NAME_CHANNEL),
-        Elem_A = exmpp_xml:set_attribute(Raw_Elem, <<"localport">>, A),
-        Elem_B = exmpp_xml:set_attribute(Elem_A, <<"remoteport">>, B),
-	Elem_C = exmpp_xml:set_attribute(Elem_B, <<"id">>, jn_component:prepare_id(ID)),
-        exmpp_xml:set_attribute(Elem_C, <<"host">>, Host).
+        Elem_A = exmpp_xml:set_attribute(Raw_Elem, "localport", A),
+        Elem_B = exmpp_xml:set_attribute(Elem_A, "remoteport", B),
+	Elem_C = exmpp_xml:set_attribute(Elem_B, "id", jn_component:prepare_id(ID)),
+        exmpp_xml:set_attribute(Elem_C, "host", Host).
 
 allocate_relay(ChannelMonitor, U, PortMonitor) -> allocate_relay(ChannelMonitor, U, 5, PortMonitor).
 allocate_relay(_, U, 0, _) -> 
@@ -104,10 +107,11 @@ allocate_relay(ChannelMonitor, U, Tries, PortMonitor) ->
      	case jn_component:get_port(PortMonitor) of
 		{ok, Port} ->
      			PortB = Port + 2,
+			CT = now(),
      			case jingle_relay:start(Port, PortB) of
 				{ok, R} ->
 					ID=erlang:pid_to_list(R), 
-					ChannelMonitor ! #relay{pid=R, user=U, id=ID, creationTime=now()},
+					ChannelMonitor ! #relay{pid=R, user=U, id=ID, creationTime=CT},
 					{ok, Port, PortB, ID};
 				_ -> allocate_relay(ChannelMonitor, U, Tries-1, PortMonitor)
 	     		end;

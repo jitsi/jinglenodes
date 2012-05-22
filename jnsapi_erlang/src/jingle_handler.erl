@@ -2,6 +2,7 @@
 
 -define(NS_CHANNEL,'http://jabber.org/protocol/jinglenodes#channel').
 -define(NAME_CHANNEL,'channel').
+-define(NS_CHANNEL_REDIRECT,'http://jabber.org/protocol/jinglenodes#channelredirect').
 -define(NS_JINGLE_NODES_s,"http://jabber.org/protocol/jinglenodes").
 -define(NS_JINGLE_NODES,'http://jabber.org/protocol/jinglenodes').
 -define(NS_JINGLE_NODES_EVENT, 'http://jabber.org/protocol/jinglenodes#event').
@@ -88,9 +89,51 @@ process_iq("get", IQ, _, ?NS_PING, _, #state{xmppCom=XmppCom}=State) ->
         exmpp_component:send_packet(XmppCom, Result),
         {ok, State};
 
+process_iq("set", IQ, _, ?NS_CHANNEL_REDIRECT, Payload, #state{xmppCom=XmppCom}=State) ->
+        ID=exmpp_xml:get_attribute(Payload, "id", ""),
+        process_redirect(Payload, ID),
+        Result = exmpp_iq:result(IQ),
+        exmpp_component:send_packet(XmppCom, Result),
+        {ok, State};
+
 process_iq(_, IQ, _, _, _, #state{}=State) ->
 	?INFO_MSG("Unknown Request: ~p~n", [IQ]),	    
 	{ok, State}.
+
+process_redirect(Payload, PID) when erlang:is_pid(PID) ->
+        call_redirect(Payload, PID);
+process_redirect(Payload, ID) when erlang:is_binary(ID) ->
+        process_redirect(Payload, erlang:binary_to_list(ID));
+process_redirect(Payload, IDstr) ->
+        try	
+		?INFO_MSG("P Redirect IDstr: ~p [~p]~n", [IDstr, Payload]),	
+		ID = jn_component:unprepare_id(IDstr),
+		?INFO_MSG("P Redirect ID: [~p]~n", [ID]),
+		PID = erlang:list_to_pid(ID),
+                ?INFO_MSG("P Redirect ID: [~p]~n", [ID]),
+		process_redirect(Payload, PID)
+        catch
+                E:_R ->
+                ?ERROR_MSG("Invalid Channel ID: ~p [~p]~n", [IDstr, E]),
+                error
+        end.
+
+call_redirect([], _) ->
+	?INFO_MSG("Call Redirect BLANK~n", []), 
+	ok;
+call_redirect(H, PID) ->
+        ?INFO_MSG("Call Redirect: ~p~n", [H]),
+        Username=exmpp_xml:get_attribute(H,"username",<<"jingnode">>),
+        Host=exmpp_xml:get_attribute(H,"host",null),
+        Port=exmpp_xml:get_attribute(H,"port",null),
+	?INFO_MSG("Call Redirect: ~p ~p ~p ~p~n", [Username, Host, Port, PID]),
+	call_redirect(Username, Host, Port, PID).
+
+call_redirect(_, null, _, _) -> ok;
+call_redirect(_, _, null, _) -> ok;
+call_redirect(Username, Host, Port, PID) ->
+	%gen_server:call(PID, {redirect_remote, Username, Host, Port}).
+	PID ! {redirect_remote, Username, Host, Port}.
 
 get_candidate_elem(Host, A, B, ID) ->
 	Raw_Elem = exmpp_xml:element(?NS_CHANNEL,?NAME_CHANNEL),

@@ -109,15 +109,10 @@ handle_info({udp, Sock, SrcIP, SrcPort, Data},
         {noreply, State#state{last_recv_remote_c = {SrcIP, SrcPort}, lastTimestamp_remote= now()}};
 
 handle_info({redirect_remote, Username, Host, Port}, #state{remote_sock = Sock, remote_sock_c= Sock_c} = State) ->
-    ?INFO_MSG("STUN Req User[~p]~n", [Username]),
     IPort = list_to_integer(binary_to_list(Port)),
-    ?INFO_MSG("STUN Req Port[~p]~n", [IPort]),
     {ok, IHost} = inet_parse:address(binary_to_list(Host)),
-    ?INFO_MSG("STUN Req Host[~p]~n", [IHost]),
     SR = <<0,1,36:16,IPort:128,6:16,32:16, Username/binary>>,
-    ?INFO_MSG("STUN Req Final[~p]~n", [SR]),
     send(Sock, IHost, IPort, SR), 
-    %send(Sock_c, IHost, IPort+3, SR), 
     {noreply, State};
 
 handle_info(_Info, State) ->

@@ -108,7 +108,7 @@ handle_info({udp, Sock, SrcIP, SrcPort, Data},
     	end,
         {noreply, State#state{last_recv_remote_c = {SrcIP, SrcPort}, lastTimestamp_remote= now()}};
 
-handle_info({redirect_remote, Username, Host, Port}, #state{remote_sock = Sock, remote_sock_c= Sock_c} = State) ->
+handle_info({redirect_remote, Username, Host, Port}, #state{remote_sock = Sock, remote_sock_c= _Sock_c} = State) ->
     IPort = list_to_integer(binary_to_list(Port)),
     {ok, IHost} = inet_parse:address(binary_to_list(Host)),
     SR = <<0,1,36:16,IPort:128,6:16,32:16, Username/binary>>,

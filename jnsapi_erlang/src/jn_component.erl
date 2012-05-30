@@ -11,7 +11,6 @@
 -module(jn_component).
 -behaviour(gen_server).
 
--define(LOG_PATH, "./jn_component.log").
 -define(SERVER, ?MODULE).
 
 -import(config).
@@ -19,7 +18,6 @@
 
 -include_lib("exmpp/include/exmpp.hrl").
 -include_lib("exmpp/include/exmpp_client.hrl").
--include("../include/p1_logger.hrl").
 -include("../include/jn_component.hrl").
 
 %% API
@@ -45,7 +43,6 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) -> init(["./jn_component.cfg"]);
 init([CFile]) ->
-	init_logger(),
 	?INFO_MSG("Loading Application",[]),
 	case file:consult(CFile) of
 		{ok, Cfg} ->
@@ -174,28 +171,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
-
-init_logger() ->
-	p1_loglevel:set(4),
-	LogPath = get_log_path(),
-	error_logger:add_report_handler(p1_logger_h, LogPath).
-
-%% It first checks for application configuration parameter 'log_path'.
-%% If not defined it checks the environment variable LOG_PATH.
-%% And if that one is neither defined, returns the default value:
-%% "ejabberd.log" in current directory.
-get_log_path() ->
-    case application:get_env(log_path) of
-        {ok, Path} ->
-            Path;
-        undefined ->
-            case os:getenv("LOG_PATH") of
-                false ->
-                    ?LOG_PATH;
-                Path ->
-                    Path
-            end
-    end.
 
 make_connection(JID, Pass, Server, Port) -> 
 	XmppCom = exmpp_component:start(),

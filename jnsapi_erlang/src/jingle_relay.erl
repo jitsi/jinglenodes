@@ -10,9 +10,10 @@
 %%%-------------------------------------------------------------------
 -module(jingle_relay).
 
--include("../include/p1_logger.hrl").
-
 -behaviour(gen_server).
+
+-define(INFO_MSG(M, P), lager:info(M, P)).
+-define(ERROR_MSG(M, P), lager:error(M, P)).
 
 %% API
 -export([start/2, start_link/2]).

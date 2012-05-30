@@ -8,7 +8,6 @@
 -define(NS_JINGLE_NODES_EVENT, 'http://jabber.org/protocol/jinglenodes#event').
 -define(NAME_SERVICES,'services').
 -define(NS_CHANNEL_s,"http://jabber.org/protocol/jinglenodes#channel").
--define(LOG_PATH, "./jn_component.log").
 -define(SERVER, ?MODULE).
 
 -import(config).
@@ -16,7 +15,6 @@
 
 -include_lib("exmpp/include/exmpp.hrl").
 -include_lib("exmpp/include/exmpp_client.hrl").
--include("../include/p1_logger.hrl").
 -include("../include/jn_component.hrl").
 
 %% API

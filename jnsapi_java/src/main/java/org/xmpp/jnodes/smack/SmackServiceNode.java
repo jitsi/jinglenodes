@@ -158,7 +158,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
 
     public void processPacket(final Packet packet) {
 
-        System.out.println("Received: " + packet.toXML());
+        //System.out.println("Received: " + packet.toXML());
         if (packet instanceof JingleChannelIQ) {
             final JingleChannelIQ request = (JingleChannelIQ) packet;
             if (request.isRequest()) {
@@ -215,7 +215,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         return result instanceof JingleTrackerIQ ? (JingleTrackerIQ) result : null;
     }
 
-    private static void deepSearch(final XMPPConnection xmppConnection, final int maxEntries, final String startPoint, final MappedNodes mappedNodes, final int maxDepth, final int maxSearchNodes, final String protocol, final ConcurrentHashMap<String, String> visited) {
+    public static void deepSearch(final XMPPConnection xmppConnection, final int maxEntries, final String startPoint, final MappedNodes mappedNodes, final int maxDepth, final int maxSearchNodes, final String protocol, final ConcurrentHashMap<String, String> visited) {
         if (xmppConnection == null || !xmppConnection.isConnected()) {
             return;
         }
@@ -248,7 +248,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
     public static MappedNodes aSyncSearchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol, final boolean searchBuddies) {
         final MappedNodes mappedNodes = new MappedNodes();
         final Runnable bgTask = new Runnable(){
-            @Override
+
             public void run() {
                 searchServices(new ConcurrentHashMap<String, String>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol, searchBuddies, mappedNodes);
             }

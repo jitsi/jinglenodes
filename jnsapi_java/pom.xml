@@ -5,6 +5,13 @@
 
     <modelVersion>4.0.0</modelVersion>
 
+  <parent>
+    <groupId>org.jitsi</groupId>
+    <artifactId>jitsi-universe</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <relativePath>../jitsi-universe/pom.xml</relativePath>
+  </parent>
+
     <groupId>org.xmpp</groupId>
     <artifactId>jnsapi</artifactId>
     <packaging>jar</packaging>
@@ -52,14 +59,12 @@
             <version>1.2.14</version>
         </dependency>
         <dependency>
-            <groupId>jivesoftware</groupId>
+            <groupId>org.igniterealtime.smack</groupId>
             <artifactId>smack</artifactId>
-            <version>3.1.0</version>
         </dependency>
         <dependency>   
-            <groupId>jivesoftware</groupId>
+            <groupId>org.igniterealtime.smack</groupId>
             <artifactId>smackx</artifactId>
-            <version>3.1.0</version>
         </dependency>
         <dependency>
             <groupId>commons-lang</groupId>
@@ -72,4 +77,31 @@
             <version>1.6</version>
         </dependency>
     </dependencies>
+
+  <repositories>
+    <repository>
+      <id>jitsi-maven-repository-releases</id>
+      <layout>default</layout>
+      <name>Jitsi Maven Repository (Releases)</name>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <url>https://github.com/jitsi/jitsi-maven-repository/raw/master/releases/</url>
+    </repository>
+    <repository>
+      <id>jitsi-maven-repository-snapshots</id>
+      <layout>default</layout>
+      <name>Jitsi Maven Repository (Snapshots)</name>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <url>https://github.com/jitsi/jitsi-maven-repository/raw/master/snapshots/</url>
+    </repository>
+  </repositories>
 </project>

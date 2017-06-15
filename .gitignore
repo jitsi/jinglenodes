@@ -1,1 +1,4 @@
 /jnsapi_java/target/
+.settings
+.classpath
+.project

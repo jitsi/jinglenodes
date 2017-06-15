@@ -1,6 +1,7 @@
 package org.xmpp.jnodes.nio;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -120,7 +121,7 @@ public class PublicIPResolver {
 
         for (int t = 0; t < 3; t++) {
             try {
-                final SelDatagramChannel channel = SelDatagramChannel.open(null, new InetSocketAddress(System.getProperty("os.name")!=null&&System.getProperty("os.name").toLowerCase().indexOf("win") > -1 ? LocalIPResolver.getLocalIP() : "0.0.0.0", lport));
+                final SelDatagramChannel channel = SelDatagramChannel.open(null, new InetSocketAddress(InetAddress.getByAddress(new byte[4]), lport));
 
                 return getPublicAddress(channel, stunServer, port);
 

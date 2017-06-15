@@ -7,7 +7,6 @@ import org.jivesoftware.smack.packet.IQ;
 import org.jivesoftware.smack.packet.Presence;
 import org.junit.Ignore;
 import org.xmpp.jnodes.RelayChannelTest;
-import org.xmpp.jnodes.nio.LocalIPResolver;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -140,9 +139,6 @@ public class SmackServiceNodeTest extends TestCase {
 
     @Ignore("Meant to be ran manually")
     public void testDeepSearch() throws InterruptedException, XMPPException, IOException {
-
-        LocalIPResolver.setOverrideIp("127.0.0.1");
-
         final String server = "localhost";
         final int port = 5222;
         final int timeout = 6000;
@@ -194,9 +190,6 @@ public class SmackServiceNodeTest extends TestCase {
 
     @Ignore("Meant to be ran manually")
     public void testDeepASyncSearch() throws InterruptedException, XMPPException, IOException {
-
-        LocalIPResolver.setOverrideIp("127.0.0.1");
-
         final String server = "localhost";
         final int port = 5222;
         final int timeout = 6000;

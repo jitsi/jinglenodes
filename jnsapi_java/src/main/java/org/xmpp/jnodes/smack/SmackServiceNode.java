@@ -209,7 +209,7 @@ public class SmackServiceNode implements ConnectionListener {
         iq.setTo(serviceNode);
 
         StanzaCollector collector = xmppConnection.createStanzaCollectorAndSend(iq);
-        JingleChannelIQ result = (JingleChannelIQ) collector.nextResult(Math.round(SmackConfiguration.getDefaultReplyTimeout() * 10.5));
+        JingleChannelIQ result = collector.nextResult(Math.round(SmackConfiguration.getDefaultReplyTimeout() * 10.5));
         collector.cancel();
 
         return result;
@@ -310,7 +310,7 @@ public class SmackServiceNode implements ConnectionListener {
         items.setTo(startPoint);
         StanzaCollector collector = xmppConnection.createStanzaCollector(new StanzaIdFilter(items.getStanzaId()));
         xmppConnection.sendStanza(items);
-        DiscoverItems result = (DiscoverItems) collector.nextResult(Math.round(SmackConfiguration.getDefaultReplyTimeout() * 1.5));
+        DiscoverItems result = collector.nextResult(Math.round(SmackConfiguration.getDefaultReplyTimeout() * 1.5));
 
         if (result != null) {
             for (DiscoverItems.Item item : result.getItems()) {

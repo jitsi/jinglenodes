@@ -1,6 +1,7 @@
 package org.xmpp.jnodes.smack;
 
 import org.jivesoftware.smack.packet.IQ;
+import org.jxmpp.jid.Jid;
 
 public class JingleChannelIQ extends IQ {
 
@@ -12,31 +13,29 @@ public class JingleChannelIQ extends IQ {
 
     private String protocol = UDP;
     private String host;
-    private int localport = -1;
-    private int remoteport = -1;
+    private Integer localport = -1;
+    private Integer remoteport = -1;
     private String id;
 
     public JingleChannelIQ() {
-        this.setType(Type.GET);
-        this.setPacketID(IQ.nextID());
+        super(NAME, NAMESPACE);
+        this.setType(Type.get);
     }
 
-    public String getChildElementXML() {
-        final StringBuilder str = new StringBuilder();
-
-        str.append("<").append(NAME).append(" xmlns='").append(NAMESPACE).append("' protocol='").append(protocol).append("' ");
+    public IQChildElementXmlStringBuilder getIQChildElementBuilder(IQChildElementXmlStringBuilder str) {
+        str.attribute("protocol", protocol);
         if (localport > 0 && remoteport > 0 && host != null) {
-            str.append("host='").append(host).append("' ");
-            str.append("localport='").append(localport).append("' ");
-            str.append("remoteport='").append(remoteport).append("' ");
+            str.attribute("host", host);
+            str.attribute("localport", localport);
+            str.attribute("remoteport", remoteport);
         }
-        str.append("/>");
 
-        return str.toString();
+        str.setEmptyElement();
+        return str;
     }
 
     public boolean isRequest() {
-        return Type.GET.equals(this.getType());
+        return Type.get.equals(this.getType());
     }
 
     public String getProtocol() {
@@ -80,25 +79,26 @@ public class JingleChannelIQ extends IQ {
     }
 
     public static IQ createEmptyResult(IQ iq) {
-        return createIQ(iq.getPacketID(), iq.getFrom(), iq.getTo(), IQ.Type.RESULT);
+        return createIQ(iq.getStanzaId(), iq.getFrom(), iq.getTo(), IQ.Type.result);
     }
 
     public static IQ createEmptyError(IQ iq) {
-        return createIQ(iq.getPacketID(), iq.getFrom(), iq.getTo(), IQ.Type.ERROR);
+        return createIQ(iq.getStanzaId(), iq.getFrom(), iq.getTo(), IQ.Type.error);
     }
 
     public static IQ createEmptyError() {
-        return createIQ(null, null, null, IQ.Type.ERROR);
+        return createIQ(null, null, null, IQ.Type.error);
     }
 
-    public static IQ createIQ(String ID, String to, String from, IQ.Type type) {
-        IQ iqPacket = new IQ() {
-            public String getChildElementXML() {
-                return null;
+    public static IQ createIQ(String id, Jid to, Jid from, IQ.Type type) {
+        IQ iqPacket = new IQ(NAME, NAMESPACE) {
+            @Override
+            protected IQChildElementXmlStringBuilder getIQChildElementBuilder(IQChildElementXmlStringBuilder xml) {
+                return xml;
             }
         };
 
-        iqPacket.setPacketID(ID);
+        iqPacket.setStanzaId(id);
         iqPacket.setTo(to);
         iqPacket.setFrom(from);
         iqPacket.setType(type);

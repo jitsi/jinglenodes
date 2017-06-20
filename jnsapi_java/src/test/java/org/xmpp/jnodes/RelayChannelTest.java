@@ -1,11 +1,5 @@
 package org.xmpp.jnodes;
 
-import junit.framework.TestCase;
-import org.junit.Ignore;
-import org.xmpp.jnodes.nio.DatagramListener;
-import org.xmpp.jnodes.nio.MockSocket;
-import org.xmpp.jnodes.nio.SelDatagramChannel;
-
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetSocketAddress;
@@ -16,6 +10,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.Ignore;
+import org.xmpp.jnodes.nio.DatagramListener;
+import org.xmpp.jnodes.nio.MockSocket;
+import org.xmpp.jnodes.nio.SelDatagramChannel;
+
+import junit.framework.TestCase;
 
 public class RelayChannelTest extends TestCase {
 

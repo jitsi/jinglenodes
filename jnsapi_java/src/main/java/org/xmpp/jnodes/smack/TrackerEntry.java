@@ -1,5 +1,7 @@
 package org.xmpp.jnodes.smack;
 
+import org.jxmpp.jid.Jid;
+
 public class TrackerEntry {
 
     public enum Type {
@@ -18,9 +20,9 @@ public class TrackerEntry {
     private Policy policy;
     private boolean verified = false;
     private String protocol = JingleChannelIQ.UDP;
-    private String jid;
+    private Jid jid;
 
-    public TrackerEntry(final Type type, final Policy policy, final String jid, final String protocol) {
+    public TrackerEntry(final Type type, final Policy policy, final Jid jid, final String protocol) {
         this.type = type;
         this.policy = policy;
         this.jid = jid;
@@ -35,11 +37,11 @@ public class TrackerEntry {
         this.type = type;
     }
 
-    public String getJid() {
+    public Jid getJid() {
         return jid;
     }
 
-    public void setJid(String jid) {
+    public void setJid(Jid jid) {
         this.jid = jid;
     }
 

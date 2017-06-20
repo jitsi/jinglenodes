@@ -8,8 +8,8 @@
     <groupId>org.jitsi</groupId>
     <artifactId>jnsapi</artifactId>
     <packaging>bundle</packaging>
-    <version>0.0.3-jitsi-3-SNAPSHOT</version>
-    <name>jnsapi</name>                                              
+    <version>0.0.3-jitsi-smack4.2-1-SNAPSHOT</version>
+    <name>jnsapi</name>
     <url>https://github.com/jitsi/jinglenodes</url>
 
     <scm>
@@ -56,11 +56,25 @@
         </dependency>
         <dependency>
             <groupId>org.igniterealtime.smack</groupId>
-            <artifactId>smack</artifactId>
+            <artifactId>smack-core</artifactId>
+            <version>4.2.0</version>
         </dependency>
-        <dependency>   
+        <dependency>
             <groupId>org.igniterealtime.smack</groupId>
-            <artifactId>smackx</artifactId>
+            <artifactId>smack-tcp</artifactId>
+            <version>4.2.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.igniterealtime.smack</groupId>
+            <artifactId>smack-java7</artifactId>
+            <version>4.2.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.igniterealtime.smack</groupId>
+            <artifactId>smack-extensions</artifactId>
+            <version>4.2.0</version>
         </dependency>
         <dependency>
             <groupId>commons-lang</groupId>

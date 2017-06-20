@@ -1,13 +1,13 @@
 package org.xmpp.jnodes.smack;
 
+import java.util.IllegalFormatException;
+
 import org.jivesoftware.smack.provider.IQProvider;
 import org.xmlpull.v1.XmlPullParser;
 
-import java.util.IllegalFormatException;
+public class JingleNodesProvider extends IQProvider<JingleChannelIQ> {
 
-public class JingleNodesProvider implements IQProvider {
-
-    public JingleChannelIQ parseIQ(final XmlPullParser parser) throws Exception {
+    public JingleChannelIQ parse(final XmlPullParser parser, int depth) throws Exception {
 
         JingleChannelIQ iq = null;
 

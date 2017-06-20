@@ -1,24 +1,25 @@
 package org.xmpp.jnodes.smack;
 
-import org.jivesoftware.smack.packet.IQ;
-
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.jivesoftware.smack.packet.IQ;
+import org.jxmpp.jid.Jid;
 
 public class JingleTrackerIQ extends IQ {
 
     public static final String NAME = "services";
     public static final String NAMESPACE = "http://jabber.org/protocol/jinglenodes";
 
-    private final ConcurrentHashMap<String, TrackerEntry> entries = new ConcurrentHashMap<String, TrackerEntry>();
+    private final ConcurrentHashMap<Jid, TrackerEntry> entries = new ConcurrentHashMap<Jid, TrackerEntry>();
 
     public JingleTrackerIQ() {
-        this.setType(Type.GET);
-        this.setPacketID(IQ.nextID());
+        super(NAME, NAMESPACE);
+        this.setType(Type.get);
     }
 
     public boolean isRequest() {
-        return Type.GET.equals(this.getType());
+        return Type.get.equals(this.getType());
     }
 
     public void addEntry(final TrackerEntry entry) {
@@ -29,23 +30,18 @@ public class JingleTrackerIQ extends IQ {
         entries.remove(entry.getJid());
     }
 
-    public String getChildElementXML() {
-        final StringBuilder str = new StringBuilder();
-
-        str.append("<").append(NAME).append(" xmlns='").append(NAMESPACE).append("'>");
+    public IQChildElementXmlStringBuilder getIQChildElementBuilder(IQChildElementXmlStringBuilder str) {
+        str.rightAngleBracket();
         for (final TrackerEntry entry : entries.values()) {
-            str.append("<").append(entry.getType().toString());
-            str.append(" policy='").append(entry.getPolicy().toString()).append("'");
-            str.append(" address='").append(entry.getJid()).append("'");
-            str.append(" protocol='").append(entry.getProtocol()).append("'");
-            if (entry.isVerified()) {
-                str.append(" verified='").append(entry.isVerified()).append("'");
-            }
-            str.append("/>");
+            str.halfOpenElement(entry.getType().toString())
+                .attribute("policy", entry.getPolicy().toString())
+                .attribute("address", entry.getJid())
+                .attribute("protocol", entry.getProtocol())
+                .optBooleanAttribute("verified", entry.isVerified())
+                .closeEmptyElement();
         }
-        str.append("</").append(NAME).append(">");
 
-        return str.toString();
+        return str;
     }
 
     public Collection<TrackerEntry> getEntries() {

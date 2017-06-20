@@ -1,50 +1,98 @@
 package org.xmpp.jnodes.smack;
 
-import junit.framework.TestCase;
-import org.jivesoftware.smack.Roster;
+import java.io.IOException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.X509TrustManager;
+
+import org.jivesoftware.smack.AbstractXMPPConnection;
+import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.packet.IQ;
 import org.jivesoftware.smack.packet.Presence;
+import org.jivesoftware.smack.roster.Roster;
+import org.jivesoftware.smack.tcp.XMPPTCPConnection;
+import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
 import org.junit.Ignore;
+import org.jxmpp.jid.impl.JidCreate;
+import org.jxmpp.jid.parts.Localpart;
+import org.jxmpp.stringprep.XmppStringprepException;
 import org.xmpp.jnodes.RelayChannelTest;
+import org.xmpp.jnodes.smack.SmackServiceNode.MappedNodes;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import junit.framework.TestCase;
 
 public class SmackServiceNodeTest extends TestCase {
-    @Ignore("Meant to be ran manually")
-    public void testConnect() throws InterruptedException, XMPPException, IOException {
+    private AbstractXMPPConnection getTcpConnection(String server, int port, int timeout) throws SmackException, IOException, XMPPException, InterruptedException {
+        XMPPTCPConnectionConfiguration.Builder configBuilder = XMPPTCPConnectionConfiguration
+            .builder()
+            .setHost(server)
+            .setXmppDomain(server)
+            .setPort(port)
+            .setConnectTimeout(timeout)
+            .setCustomX509TrustManager(new X509TrustManager() {
+                // these are unit tests, we really don't care
+                @Override
+                public X509Certificate[] getAcceptedIssuers() {
+                    return null;
+                }
 
-        LocalIPResolver.setOverrideIp("127.0.0.1");
+                @Override
+                public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                }
+
+                @Override
+                public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                }
+            })
+            .setDebuggerEnabled(true)
+            .setHostnameVerifier(new HostnameVerifier() {
+                @Override
+                public boolean verify(String hostname, SSLSession session) {
+                    return true;
+                }
+            });
+        AbstractXMPPConnection connection = new XMPPTCPConnection(configBuilder.build());
+        return connection;
+    }
+
+    @Ignore("Meant to be run manually")
+    public void testConnect() throws Exception {
 
         final String server = "localhost";
         final int port = 5222;
-        final String user1 = "user1";
+        final Localpart user1 = Localpart.from("user1");
         final String pass1 = "user1";
-        final String user2 = "user2";
+        final Localpart user2 = Localpart.from("user2");
         final String pass2 = "user2";
-        final String user3 = "user3";
+        final Localpart user3 = Localpart.from("user3");
         final String pass3 = "user3";
         final int timeout = 1250;
 
-        final SmackServiceNode ssn1 = new SmackServiceNode(server, port, timeout);
+        final SmackServiceNode ssn1 = new SmackServiceNode(getTcpConnection(server, port, timeout), timeout);
 
-        final SmackServiceNode ssn2 = new SmackServiceNode(server, port, timeout);
+        final SmackServiceNode ssn2 = new SmackServiceNode(getTcpConnection(server, port, timeout), timeout);
 
-        final SmackServiceNode ssn3 = new SmackServiceNode(server, port, timeout);
+        final SmackServiceNode ssn3 = new SmackServiceNode(getTcpConnection(server, port, timeout), timeout);
 
         ssn3.connect(user3, pass3, false, Roster.SubscriptionMode.accept_all);
         ssn2.connect(user2, pass2, false, Roster.SubscriptionMode.accept_all);
         ssn1.connect(user1, pass1, false, Roster.SubscriptionMode.accept_all);
 
-        ssn1.getConnection().getRoster().createEntry(ssn2.getConnection().getUser().split("/")[0], "test", new String[]{});
-        ssn2.getConnection().getRoster().createEntry(ssn3.getConnection().getUser().split("/")[0], "test", new String[]{});
-        ssn3.getConnection().getRoster().createEntry(ssn1.getConnection().getUser().split("/")[0], "test", new String[]{});
+        Roster.getInstanceFor(ssn1.getConnection()).createEntry(ssn2.getConnection().getUser().asBareJid(), "test", new String[]{});
+        Roster.getInstanceFor(ssn2.getConnection()).createEntry(ssn3.getConnection().getUser().asBareJid(), "test", new String[]{});
+        Roster.getInstanceFor(ssn3.getConnection()).createEntry(ssn1.getConnection().getUser().asBareJid(), "test", new String[]{});
 
-        ssn3.getConnection().sendPacket(new Presence(Presence.Type.available));
-        ssn2.getConnection().sendPacket(new Presence(Presence.Type.available));
-        ssn1.getConnection().sendPacket(new Presence(Presence.Type.available));
+        ssn3.getConnection().sendStanza(new Presence(Presence.Type.available));
+        ssn2.getConnection().sendStanza(new Presence(Presence.Type.available));
+        ssn1.getConnection().sendStanza(new Presence(Presence.Type.available));
 
         Thread.sleep(250);
 
@@ -90,13 +138,13 @@ public class SmackServiceNodeTest extends TestCase {
         Thread.sleep(500);
 
         for (int i = 0; i < pub; i++) {
-            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "p" + String.valueOf(i), JingleChannelIQ.UDP));
+            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, JidCreate.from("p" + String.valueOf(i)), JingleChannelIQ.UDP));
         }
         for (int i = 0; i < unk; i++) {
-            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "d" + String.valueOf(i), JingleChannelIQ.UDP));
+            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, JidCreate.from("d" + String.valueOf(i)), JingleChannelIQ.UDP));
         }
         for (int i = 0; i < ros; i++) {
-            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._roster, "r" + String.valueOf(i), JingleChannelIQ.UDP));
+            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._roster, JidCreate.from("r" + String.valueOf(i)), JingleChannelIQ.UDP));
         }
 
         Thread.sleep(200);
@@ -122,8 +170,8 @@ public class SmackServiceNodeTest extends TestCase {
         Thread.sleep(1500);
     }
 
-    public void testTrackerEntry() {
-        TrackerEntry entry = new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "node", JingleChannelIQ.UDP);
+    public void testTrackerEntry() throws XmppStringprepException {
+        TrackerEntry entry = new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, JidCreate.from("node"), JingleChannelIQ.UDP);
 
         assertEquals("public", entry.getPolicy().toString());
         assertEquals(TrackerEntry.Policy.valueOf("_public"), entry.getPolicy());
@@ -131,14 +179,14 @@ public class SmackServiceNodeTest extends TestCase {
         JingleTrackerIQ iq = new JingleTrackerIQ();
 
         for (int i = 0; i < 10; i++) {
-            iq.addEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "u" + String.valueOf(i), JingleChannelIQ.UDP));
+            iq.addEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, JidCreate.from("u" + String.valueOf(i)), JingleChannelIQ.UDP));
         }
 
         System.out.println(iq.getChildElementXML());
     }
 
     @Ignore("Meant to be ran manually")
-    public void testDeepSearch() throws InterruptedException, XMPPException, IOException {
+    public void testDeepSearch() throws Exception {
         final String server = "localhost";
         final int port = 5222;
         final int timeout = 6000;
@@ -148,8 +196,8 @@ public class SmackServiceNodeTest extends TestCase {
         final List<SmackServiceNode> ssns = new ArrayList<SmackServiceNode>();
 
         for (int i = 1; i <= users; i++) {
-            final SmackServiceNode ssn = new SmackServiceNode(server, port, timeout);
-            ssn.connect(pre + i, pre + i, true, Roster.SubscriptionMode.accept_all);
+            final SmackServiceNode ssn = new SmackServiceNode(getTcpConnection(server, port, timeout), timeout);
+            ssn.connect(Localpart.from(pre + i), pre + i, true, Roster.SubscriptionMode.accept_all);
             ssns.add(ssn);
             System.out.println("Connected " + pre + i);
         }
@@ -157,7 +205,7 @@ public class SmackServiceNodeTest extends TestCase {
         Thread.sleep(250);
 
         for (int i = 0; i < users - 1; i++) {
-            ssns.get(i).getConnection().getRoster().createEntry(ssns.get(i + 1).getConnection().getUser(), "test", new String[]{});
+            Roster.getInstanceFor(ssns.get(i).getConnection()).createEntry(ssns.get(i + 1).getConnection().getUser().asBareJid(), "test", new String[]{});
             ssns.get(i + 1).addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, ssns.get(i + 1).getConnection().getUser(), JingleChannelIQ.UDP));
             ssns.get(i).addTrackerEntry(new TrackerEntry(TrackerEntry.Type.tracker, TrackerEntry.Policy._public, ssns.get(i + 1).getConnection().getUser(), JingleChannelIQ.UDP));
         }
@@ -175,7 +223,7 @@ public class SmackServiceNodeTest extends TestCase {
 
             assertNotNull(iq);
 
-            assertEquals(IQ.Type.RESULT, iq.getType());
+            assertEquals(IQ.Type.result, iq.getType());
 
             assertTrue(RelayChannelTest.testDatagramChannelsExternal(iq.getLocalport(), iq.getRemoteport()));
         }
@@ -188,7 +236,7 @@ public class SmackServiceNodeTest extends TestCase {
     }
 
     @Ignore("Meant to be ran manually")
-    public void testDeepASyncSearch() throws InterruptedException, XMPPException, IOException {
+    public void testDeepASyncSearch() throws InterruptedException, XMPPException, IOException, SmackException, ExecutionException {
         final String server = "localhost";
         final int port = 5222;
         final int timeout = 6000;
@@ -198,8 +246,8 @@ public class SmackServiceNodeTest extends TestCase {
         final List<SmackServiceNode> ssns = new ArrayList<SmackServiceNode>();
 
         for (int i = 1; i <= users; i++) {
-            final SmackServiceNode ssn = new SmackServiceNode(server, port, timeout);
-            ssn.connect(pre + i, pre + i, true, Roster.SubscriptionMode.accept_all);
+            final SmackServiceNode ssn = new SmackServiceNode(getTcpConnection(server, port, timeout), timeout);
+            ssn.connect(Localpart.from(pre + i), pre + i, true, Roster.SubscriptionMode.accept_all);
             ssns.add(ssn);
             System.out.println("Connected " + pre + i);
         }
@@ -207,7 +255,7 @@ public class SmackServiceNodeTest extends TestCase {
         Thread.sleep(250);
 
         for (int i = 0; i < users - 1; i++) {
-            ssns.get(i).getConnection().getRoster().createEntry(ssns.get(i + 1).getConnection().getUser(), "test", new String[]{});
+            Roster.getInstanceFor(ssns.get(i).getConnection()).createEntry(ssns.get(i + 1).getConnection().getUser().asBareJid(), "test", new String[]{});
             ssns.get(i + 1).addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, ssns.get(i + 1).getConnection().getUser(), JingleChannelIQ.UDP));
             ssns.get(i).addTrackerEntry(new TrackerEntry(TrackerEntry.Type.tracker, TrackerEntry.Policy._public, ssns.get(i + 1).getConnection().getUser(), JingleChannelIQ.UDP));
         }
@@ -225,7 +273,7 @@ public class SmackServiceNodeTest extends TestCase {
 
             assertNotNull(iq);
 
-            assertEquals(IQ.Type.RESULT, iq.getType());
+            assertEquals(IQ.Type.result, iq.getType());
 
             assertTrue(RelayChannelTest.testDatagramChannelsExternal(iq.getLocalport(), iq.getRemoteport()));
         }

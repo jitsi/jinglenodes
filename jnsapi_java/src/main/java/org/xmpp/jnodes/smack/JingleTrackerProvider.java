@@ -1,11 +1,13 @@
 package org.xmpp.jnodes.smack;
 
 import org.jivesoftware.smack.provider.IQProvider;
+import org.jxmpp.jid.Jid;
+import org.jxmpp.jid.impl.JidCreate;
 import org.xmlpull.v1.XmlPullParser;
 
-public class JingleTrackerProvider implements IQProvider {
+public class JingleTrackerProvider extends IQProvider<JingleTrackerIQ> {
 
-    public JingleTrackerIQ parseIQ(final XmlPullParser parser) throws Exception {
+    public JingleTrackerIQ parse(final XmlPullParser parser, int depth) throws Exception {
 
         JingleTrackerIQ iq = new JingleTrackerIQ();
 
@@ -31,7 +33,7 @@ public class JingleTrackerProvider implements IQProvider {
 
                 final String protocol = parser.getAttributeValue(null, "protocol");
                 final TrackerEntry.Policy policy = TrackerEntry.Policy.valueOf("_" + parser.getAttributeValue(null, "policy"));
-                final String address = parser.getAttributeValue(null, "address");
+                final Jid address = JidCreate.from(parser.getAttributeValue(null, "address"));
                 final String verified = parser.getAttributeValue(null, "verified");
 
                 if (address != null && address.length() > 0) {

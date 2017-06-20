@@ -284,7 +284,6 @@ public class RelayChannelTest extends TestCase {
 
     public void testSocketPerformance() {
         int max = 500;
-        for (int j = 0; j < max; j++)
             for (int i = 0; i < max; i++) {
                 try {
                     SelDatagramChannel c = SelDatagramChannel.open(null, new InetSocketAddress(localIP, i + 30000));

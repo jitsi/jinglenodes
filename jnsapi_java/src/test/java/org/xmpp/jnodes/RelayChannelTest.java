@@ -12,18 +12,20 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Ignore;
+import org.junit.Test;
 import org.xmpp.jnodes.nio.DatagramListener;
 import org.xmpp.jnodes.nio.MockSocket;
 import org.xmpp.jnodes.nio.SelDatagramChannel;
 
-import junit.framework.TestCase;
+import static org.junit.Assert.assertNotNull;
 
-public class RelayChannelTest extends TestCase {
+public class RelayChannelTest {
 
     final static String encode = "UTF-8";
     final static String localIP = "127.0.0.1";
     private final static ExecutorService executorService = Executors.newCachedThreadPool();
 
+    @Test
     public void testDatagramChannels() {
         final List<Future> futures = new ArrayList<Future>();
         int max = 1;
@@ -66,7 +68,6 @@ public class RelayChannelTest extends TestCase {
         }
     }
 
-    @Ignore("Meant to be ran manually")
     public static boolean testDatagramChannelsExternal(final int portA, final int portB) throws IOException, InterruptedException {
 
         final SocketAddress sa = new InetSocketAddress(localIP, portA);
@@ -282,18 +283,20 @@ public class RelayChannelTest extends TestCase {
         return finished;
     }
 
+    @Test
     public void testSocketPerformance() {
         int max = 500;
-            for (int i = 0; i < max; i++) {
-                try {
-                    SelDatagramChannel c = SelDatagramChannel.open(null, new InetSocketAddress(localIP, i + 30000));
-                    c.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+        for (int i = 0; i < max; i++) {
+            try {
+                SelDatagramChannel c = SelDatagramChannel.open(null, new InetSocketAddress(localIP, i + 30000));
+                c.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
+        }
     }
 
+    @Test
     public void testSocketPerformanceConcurrent() {
         int max = 100;
         int t = 10;

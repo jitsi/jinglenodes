@@ -4,8 +4,11 @@ import junit.framework.TestCase;
 
 import java.net.InetSocketAddress;
 
-public class ResolverTest extends TestCase {
+import org.junit.Test;
 
+public class ResolverTest {
+
+    @Test
     public void testPublicIP() {
         final InetSocketAddress sa = PublicIPResolver.getPublicAddress("stun1.l.google.com", 19302);
 

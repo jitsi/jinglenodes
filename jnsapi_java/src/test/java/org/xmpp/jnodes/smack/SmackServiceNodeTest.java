@@ -1,5 +1,7 @@
 package org.xmpp.jnodes.smack;
 
+import static org.junit.Assert.*;
+
 import java.io.IOException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -21,6 +23,7 @@ import org.jivesoftware.smack.roster.Roster;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
 import org.junit.Ignore;
+import org.junit.Test;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.jid.parts.Localpart;
 import org.jxmpp.stringprep.XmppStringprepException;
@@ -29,7 +32,7 @@ import org.xmpp.jnodes.smack.SmackServiceNode.MappedNodes;
 
 import junit.framework.TestCase;
 
-public class SmackServiceNodeTest extends TestCase {
+public class SmackServiceNodeTest {
     private AbstractXMPPConnection getTcpConnection(String server, int port, int timeout) throws SmackException, IOException, XMPPException, InterruptedException {
         XMPPTCPConnectionConfiguration.Builder configBuilder = XMPPTCPConnectionConfiguration
             .builder()
@@ -63,6 +66,7 @@ public class SmackServiceNodeTest extends TestCase {
         return connection;
     }
 
+    @Test
     @Ignore("Meant to be run manually")
     public void testConnect() throws Exception {
 
@@ -170,6 +174,7 @@ public class SmackServiceNodeTest extends TestCase {
         Thread.sleep(1500);
     }
 
+    @Test
     public void testTrackerEntry() throws XmppStringprepException {
         TrackerEntry entry = new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, JidCreate.from("node"), JingleChannelIQ.UDP);
 
@@ -185,6 +190,7 @@ public class SmackServiceNodeTest extends TestCase {
         System.out.println(iq.getChildElementXML());
     }
 
+    @Test
     @Ignore("Meant to be ran manually")
     public void testDeepSearch() throws Exception {
         final String server = "localhost";
@@ -235,6 +241,7 @@ public class SmackServiceNodeTest extends TestCase {
         Thread.sleep(500);
     }
 
+    @Test
     @Ignore("Meant to be ran manually")
     public void testDeepASyncSearch() throws InterruptedException, XMPPException, IOException, SmackException, ExecutionException {
         final String server = "localhost";

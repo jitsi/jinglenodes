@@ -51,7 +51,7 @@ public class SmackServiceNodeTest extends TestCase {
         for (int j = 0; j < 1; j++) {
             JingleChannelIQ iq = SmackServiceNode.getChannel(ssn1.getConnection(), ssn2.getConnection().getUser());
 
-            assertTrue(iq != null);
+            assertNotNull(iq);
             assertTrue(ssn2.getChannels().size() > 0);
 
             for (int i = 0; i < 1; i++) {
@@ -63,7 +63,7 @@ public class SmackServiceNodeTest extends TestCase {
 
         Thread.sleep(timeout * 2);
 
-        assertEquals(ssn2.getChannels().size(), 0);
+        assertEquals(0, ssn2.getChannels().size());
 
         for (int j = 0; j < 2; j++) {
             JingleChannelIQ iq = SmackServiceNode.getChannel(ssn2.getConnection(), ssn1.getConnection().getUser());
@@ -80,7 +80,7 @@ public class SmackServiceNodeTest extends TestCase {
 
         Thread.sleep(timeout * 2);
 
-        assertEquals(ssn1.getChannels().size(), 0);
+        assertEquals(0, ssn1.getChannels().size());
 
         // Tracker System Test
         final int pub = 5;
@@ -111,7 +111,7 @@ public class SmackServiceNodeTest extends TestCase {
 
         Thread.sleep(500);
 
-        assertEquals(mb.getRelayEntries().size(), pub + unk + 1);
+        assertEquals(pub + unk + 1, mb.getRelayEntries().size());
 
         System.out.println("Preferred Relay: " + ssn2.getPreferedRelay().getJid());
 
@@ -125,8 +125,8 @@ public class SmackServiceNodeTest extends TestCase {
     public void testTrackerEntry() {
         TrackerEntry entry = new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, "node", JingleChannelIQ.UDP);
 
-        assertEquals(entry.getPolicy().toString(), "public");
-        assertEquals(entry.getPolicy(), TrackerEntry.Policy.valueOf("_public"));
+        assertEquals("public", entry.getPolicy().toString());
+        assertEquals(TrackerEntry.Policy.valueOf("_public"), entry.getPolicy());
 
         JingleTrackerIQ iq = new JingleTrackerIQ();
 

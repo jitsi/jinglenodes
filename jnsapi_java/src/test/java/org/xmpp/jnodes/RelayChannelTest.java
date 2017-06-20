@@ -212,7 +212,7 @@ public class RelayChannelTest extends TestCase {
         int tests = 100;
         final List<MockSocket> cs = new ArrayList<MockSocket>();
 
-        for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
+        for (int i = 0, j = 0; i < num; i++, j++) {
             for (int t = 0; t < 50; t++) {
                 try {
                     final MockSocket s = new MockSocket(localIP, 20000 + j, provider);

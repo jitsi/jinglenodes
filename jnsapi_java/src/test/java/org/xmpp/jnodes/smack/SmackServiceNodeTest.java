@@ -215,8 +215,8 @@ public class SmackServiceNodeTest extends TestCase {
 
         Thread.sleep(200);
 
-        SmackServiceNode.MappedNodes ma = SmackServiceNode.aSyncSearchServices(ssns.get(0).getConnection(), users * 2, users, users * 2, null, true);
-        Thread.sleep(2000);
+        Future<MappedNodes> f = SmackServiceNode.aSyncSearchServices(ssns.get(0).getConnection(), users * 2, users, users * 2, null, true);
+        MappedNodes ma = f.get();
 
         assertTrue(ma.getRelayEntries().size() >= users - 1);
         assertTrue(ma.getTrackerEntries().size() >= users - 2);

@@ -245,7 +245,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
         }
     }
 
-    public static MappedNodes aSyncSearchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol, final boolean searchBuddies) {
+    public static Future<MappedNodes> aSyncSearchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol, final boolean searchBuddies) {
         final MappedNodes mappedNodes = new MappedNodes();
         final Runnable bgTask = new Runnable(){
 
@@ -253,8 +253,7 @@ public class SmackServiceNode implements ConnectionListener, PacketListener {
                 searchServices(new ConcurrentHashMap<String, String>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol, searchBuddies, mappedNodes);
             }
         };
-        executorService.submit(bgTask);
-        return mappedNodes;
+        return executorService.submit(bgTask, mappedNodes);
     }
 
     public static MappedNodes searchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol, final boolean searchBuddies) {

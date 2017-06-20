@@ -22,6 +22,7 @@ public class JingleChannelIQ extends IQ {
         this.setType(Type.get);
     }
 
+    @Override
     public IQChildElementXmlStringBuilder getIQChildElementBuilder(IQChildElementXmlStringBuilder str) {
         str.attribute("protocol", protocol);
         if (localport > 0 && remoteport > 0 && host != null) {

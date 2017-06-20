@@ -84,6 +84,7 @@ public class SmackServiceNode implements ConnectionListener {
 
     private void setup() {
         scheduledExecutor.scheduleWithFixedDelay(new Runnable() {
+            @Override
             public void run() {
                 for (final RelayChannel c : channels.values()) {
                     final long current = System.currentTimeMillis();
@@ -128,6 +129,7 @@ public class SmackServiceNode implements ConnectionListener {
         }
     }
 
+    @Override
     public void connectionClosed() {
         closeAllChannels();
         scheduledExecutor.shutdownNow();
@@ -144,18 +146,22 @@ public class SmackServiceNode implements ConnectionListener {
         c.close();
     }
 
+    @Override
     public void connectionClosedOnError(Exception e) {
         closeAllChannels();
     }
 
+    @Override
     public void reconnectingIn(int i) {
 
     }
 
+    @Override
     public void reconnectionSuccessful() {
 
     }
 
+    @Override
     public void reconnectionFailed(Exception e) {
 
     }
@@ -258,7 +264,7 @@ public class SmackServiceNode implements ConnectionListener {
     public static Future<MappedNodes> aSyncSearchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol, final boolean searchBuddies) {
         final MappedNodes mappedNodes = new MappedNodes();
         final Runnable bgTask = new Runnable(){
-
+            @Override
             public void run() {
                 try {
                     searchServices(new ConcurrentHashMap<Jid, Jid>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol, searchBuddies, mappedNodes);

@@ -7,6 +7,7 @@ import org.xmlpull.v1.XmlPullParser;
 
 public class JingleNodesProvider extends IQProvider<JingleChannelIQ> {
 
+    @Override
     public JingleChannelIQ parse(final XmlPullParser parser, int depth) throws Exception {
 
         JingleChannelIQ iq = null;

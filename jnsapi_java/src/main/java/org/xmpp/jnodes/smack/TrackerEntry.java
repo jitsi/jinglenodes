@@ -11,6 +11,7 @@ public class TrackerEntry {
     public enum Policy {
         _public, _roster;
 
+        @Override
         public String toString() {
             return this.name().substring(1);
         }

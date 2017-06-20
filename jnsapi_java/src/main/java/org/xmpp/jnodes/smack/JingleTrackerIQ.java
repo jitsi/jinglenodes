@@ -30,6 +30,7 @@ public class JingleTrackerIQ extends IQ {
         entries.remove(entry.getJid());
     }
 
+    @Override
     public IQChildElementXmlStringBuilder getIQChildElementBuilder(IQChildElementXmlStringBuilder str) {
         str.rightAngleBracket();
         for (final TrackerEntry entry : entries.values()) {

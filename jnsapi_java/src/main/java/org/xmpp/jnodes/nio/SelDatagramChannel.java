@@ -30,6 +30,7 @@ public class SelDatagramChannel {
             }
 
             final Runnable task = new Runnable() {
+                @Override
                 public void run() {
                     while (true) {
                         try {
@@ -75,6 +76,7 @@ public class SelDatagramChannel {
                                         // Execute in a different Thread avoid serialization
                                         if (sdc.datagramListener != null) {
                                             executorService.submit(new Runnable() {
+                                                @Override
                                                 public void run() {
                                                     sdc.datagramListener.datagramReceived(sdc, b, clientAddress);
                                                 }

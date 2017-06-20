@@ -7,6 +7,7 @@ import org.xmlpull.v1.XmlPullParser;
 
 public class JingleTrackerProvider extends IQProvider<JingleTrackerIQ> {
 
+    @Override
     public JingleTrackerIQ parse(final XmlPullParser parser, int depth) throws Exception {
 
         JingleTrackerIQ iq = new JingleTrackerIQ();

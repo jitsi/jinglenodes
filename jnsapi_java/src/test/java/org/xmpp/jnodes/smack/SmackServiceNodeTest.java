@@ -68,7 +68,7 @@ public class SmackServiceNodeTest extends TestCase {
         for (int j = 0; j < 2; j++) {
             JingleChannelIQ iq = SmackServiceNode.getChannel(ssn2.getConnection(), ssn1.getConnection().getUser());
 
-            assertTrue(iq != null);
+            assertNotNull(iq);
             assertTrue(ssn1.getChannels().size() > 0);
 
             for (int i = 0; i < 1; i++) {
@@ -173,7 +173,7 @@ public class SmackServiceNodeTest extends TestCase {
         for (final TrackerEntry entry : ma.getRelayEntries().values()) {
             JingleChannelIQ iq = SmackServiceNode.getChannel(ssns.get(0).getConnection(), entry.getJid());
 
-            assertTrue(iq != null);
+            assertNotNull(iq);
 
             assertEquals(IQ.Type.RESULT, iq.getType());
 
@@ -224,7 +224,7 @@ public class SmackServiceNodeTest extends TestCase {
         for (final TrackerEntry entry : ma.getRelayEntries().values()) {
             JingleChannelIQ iq = SmackServiceNode.getChannel(ssns.get(0).getConnection(), entry.getJid());
 
-            assertTrue(iq != null);
+            assertNotNull(iq);
 
             assertEquals(IQ.Type.RESULT, iq.getType());
 

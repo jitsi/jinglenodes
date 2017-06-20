@@ -9,9 +9,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class MockSocket {
     public interface ChannelProvider {
-        public SelDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException;
+        SelDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException;
 
-        public String getName();
+        String getName();
     }
     //test
     final static String encode = "UTF-8";

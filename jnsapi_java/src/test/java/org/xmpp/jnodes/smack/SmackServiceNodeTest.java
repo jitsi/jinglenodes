@@ -164,7 +164,7 @@ public class SmackServiceNodeTest extends TestCase {
 
         Thread.sleep(200);
 
-        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssns.get(0).getConnection(), users * 2, users, users * 2, null, false);
+        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssns.get(0).getConnection(), users * 2, users, users * 2, null, true);
         Thread.sleep(200);
 
         assertTrue(ma.getRelayEntries().size() >= users - 1);
@@ -215,7 +215,7 @@ public class SmackServiceNodeTest extends TestCase {
 
         Thread.sleep(200);
 
-        SmackServiceNode.MappedNodes ma = SmackServiceNode.aSyncSearchServices(ssns.get(0).getConnection(), users * 2, users, users * 2, null, false);
+        SmackServiceNode.MappedNodes ma = SmackServiceNode.aSyncSearchServices(ssns.get(0).getConnection(), users * 2, users, users * 2, null, true);
         Thread.sleep(2000);
 
         assertTrue(ma.getRelayEntries().size() >= users - 1);

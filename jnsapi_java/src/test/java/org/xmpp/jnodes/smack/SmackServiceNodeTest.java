@@ -100,14 +100,14 @@ public class SmackServiceNodeTest extends TestCase {
         }
 
         Thread.sleep(200);
-        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssn2.getConnection(), 10, 10, 50, JingleChannelIQ.UDP, false);
+        SmackServiceNode.MappedNodes ma = SmackServiceNode.searchServices(ssn2.getConnection(), 10, 10, 50, JingleChannelIQ.UDP, true);
         ssn2.addEntries(ma);
 
         Thread.sleep(500);
 
         assertEquals(pub + unk + 1, ma.getRelayEntries().size());
 
-        SmackServiceNode.MappedNodes mb = SmackServiceNode.searchServices(ssn1.getConnection(), 10, 10, 50, JingleChannelIQ.UDP, false);
+        SmackServiceNode.MappedNodes mb = SmackServiceNode.searchServices(ssn1.getConnection(), 10, 10, 50, JingleChannelIQ.UDP, true);
 
         Thread.sleep(500);
 

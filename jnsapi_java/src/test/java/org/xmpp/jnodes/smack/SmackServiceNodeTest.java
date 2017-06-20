@@ -178,7 +178,6 @@ public class SmackServiceNodeTest extends TestCase {
             assertEquals(IQ.Type.RESULT, iq.getType());
 
             assertTrue(RelayChannelTest.testDatagramChannelsExternal(iq.getLocalport(), iq.getRemoteport()));
-            Thread.sleep(200);
         }
 
         for (final SmackServiceNode sn : ssns) {
@@ -229,7 +228,6 @@ public class SmackServiceNodeTest extends TestCase {
             assertEquals(IQ.Type.RESULT, iq.getType());
 
             assertTrue(RelayChannelTest.testDatagramChannelsExternal(iq.getLocalport(), iq.getRemoteport()));
-            Thread.sleep(200);
         }
 
         for (final SmackServiceNode sn : ssns) {

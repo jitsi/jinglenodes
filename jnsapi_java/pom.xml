@@ -8,7 +8,7 @@
     <groupId>org.jitsi</groupId>
     <artifactId>jnsapi</artifactId>
     <packaging>bundle</packaging>
-    <version>0.0.3-jitsi-smack4.2-3-SNAPSHOT</version>
+    <version>0.0.3-jitsi-smack4.2-4-SNAPSHOT</version>
     <name>jnsapi</name>
     <url>https://github.com/jitsi/jinglenodes</url>
 

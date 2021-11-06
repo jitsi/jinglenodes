@@ -3,22 +3,18 @@ package org.xmpp.jnodes.smack;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.SSLSession;
 import javax.net.ssl.X509TrustManager;
 
 import org.jivesoftware.smack.AbstractXMPPConnection;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.XMPPException;
-import org.jivesoftware.smack.packet.IQ;
-import org.jivesoftware.smack.packet.Presence;
+import org.jivesoftware.smack.packet.*;
 import org.jivesoftware.smack.roster.Roster;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
@@ -30,10 +26,8 @@ import org.jxmpp.stringprep.XmppStringprepException;
 import org.xmpp.jnodes.RelayChannelTest;
 import org.xmpp.jnodes.smack.SmackServiceNode.MappedNodes;
 
-import junit.framework.TestCase;
-
 public class SmackServiceNodeTest {
-    private AbstractXMPPConnection getTcpConnection(String server, int port, int timeout) throws SmackException, IOException, XMPPException, InterruptedException {
+    private AbstractXMPPConnection getTcpConnection(String server, int port, int timeout) throws IOException {
         XMPPTCPConnectionConfiguration.Builder configBuilder = XMPPTCPConnectionConfiguration
             .builder()
             .setHost(server)
@@ -48,22 +42,16 @@ public class SmackServiceNodeTest {
                 }
 
                 @Override
-                public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-                }
+                public void checkServerTrusted(X509Certificate[] chain, String authType)
+                {}
 
                 @Override
-                public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-                }
+                public void checkClientTrusted(X509Certificate[] chain, String authType)
+                {}
             })
-            .setDebuggerEnabled(true)
-            .setHostnameVerifier(new HostnameVerifier() {
-                @Override
-                public boolean verify(String hostname, SSLSession session) {
-                    return true;
-                }
-            });
-        AbstractXMPPConnection connection = new XMPPTCPConnection(configBuilder.build());
-        return connection;
+            .enableDefaultDebugger()
+            .setHostnameVerifier((hostname, session) -> true);
+        return new XMPPTCPConnection(configBuilder.build());
     }
 
     @Test
@@ -90,13 +78,13 @@ public class SmackServiceNodeTest {
         ssn2.connect(user2, pass2, false, Roster.SubscriptionMode.accept_all);
         ssn1.connect(user1, pass1, false, Roster.SubscriptionMode.accept_all);
 
-        Roster.getInstanceFor(ssn1.getConnection()).createEntry(ssn2.getConnection().getUser().asBareJid(), "test", new String[]{});
-        Roster.getInstanceFor(ssn2.getConnection()).createEntry(ssn3.getConnection().getUser().asBareJid(), "test", new String[]{});
-        Roster.getInstanceFor(ssn3.getConnection()).createEntry(ssn1.getConnection().getUser().asBareJid(), "test", new String[]{});
+        Roster.getInstanceFor(ssn1.getConnection()).createItemAndRequestSubscription(ssn2.getConnection().getUser().asBareJid(), "test", new String[]{});
+        Roster.getInstanceFor(ssn2.getConnection()).createItemAndRequestSubscription(ssn3.getConnection().getUser().asBareJid(), "test", new String[]{});
+        Roster.getInstanceFor(ssn3.getConnection()).createItemAndRequestSubscription(ssn1.getConnection().getUser().asBareJid(), "test", new String[]{});
 
-        ssn3.getConnection().sendStanza(new Presence(Presence.Type.available));
-        ssn2.getConnection().sendStanza(new Presence(Presence.Type.available));
-        ssn1.getConnection().sendStanza(new Presence(Presence.Type.available));
+        ssn3.getConnection().sendStanza(PresenceBuilder.buildPresence().ofType(Presence.Type.available).build());
+        ssn2.getConnection().sendStanza(PresenceBuilder.buildPresence().ofType(Presence.Type.available).build());
+        ssn1.getConnection().sendStanza(PresenceBuilder.buildPresence().ofType(Presence.Type.available).build());
 
         Thread.sleep(250);
 
@@ -142,13 +130,13 @@ public class SmackServiceNodeTest {
         Thread.sleep(500);
 
         for (int i = 0; i < pub; i++) {
-            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, JidCreate.from("p" + String.valueOf(i)), JingleChannelIQ.UDP));
+            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, JidCreate.from("p" + i), JingleChannelIQ.UDP));
         }
         for (int i = 0; i < unk; i++) {
-            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, JidCreate.from("d" + String.valueOf(i)), JingleChannelIQ.UDP));
+            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, JidCreate.from("d" + i), JingleChannelIQ.UDP));
         }
         for (int i = 0; i < ros; i++) {
-            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._roster, JidCreate.from("r" + String.valueOf(i)), JingleChannelIQ.UDP));
+            ssn3.addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._roster, JidCreate.from("r" + i), JingleChannelIQ.UDP));
         }
 
         Thread.sleep(200);
@@ -184,7 +172,7 @@ public class SmackServiceNodeTest {
         JingleTrackerIQ iq = new JingleTrackerIQ();
 
         for (int i = 0; i < 10; i++) {
-            iq.addEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, JidCreate.from("u" + String.valueOf(i)), JingleChannelIQ.UDP));
+            iq.addEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, JidCreate.from("u" + i), JingleChannelIQ.UDP));
         }
 
         System.out.println(iq.getChildElementXML());
@@ -199,7 +187,7 @@ public class SmackServiceNodeTest {
         final String pre = "user";
         final int users = 7;
 
-        final List<SmackServiceNode> ssns = new ArrayList<SmackServiceNode>();
+        final List<SmackServiceNode> ssns = new ArrayList<>();
 
         for (int i = 1; i <= users; i++) {
             final SmackServiceNode ssn = new SmackServiceNode(getTcpConnection(server, port, timeout), timeout);
@@ -211,7 +199,7 @@ public class SmackServiceNodeTest {
         Thread.sleep(250);
 
         for (int i = 0; i < users - 1; i++) {
-            Roster.getInstanceFor(ssns.get(i).getConnection()).createEntry(ssns.get(i + 1).getConnection().getUser().asBareJid(), "test", new String[]{});
+            Roster.getInstanceFor(ssns.get(i).getConnection()).createItemAndRequestSubscription(ssns.get(i + 1).getConnection().getUser().asBareJid(), "test", new String[]{});
             ssns.get(i + 1).addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, ssns.get(i + 1).getConnection().getUser(), JingleChannelIQ.UDP));
             ssns.get(i).addTrackerEntry(new TrackerEntry(TrackerEntry.Type.tracker, TrackerEntry.Policy._public, ssns.get(i + 1).getConnection().getUser(), JingleChannelIQ.UDP));
         }
@@ -250,7 +238,7 @@ public class SmackServiceNodeTest {
         final String pre = "user";
         final int users = 7;
 
-        final List<SmackServiceNode> ssns = new ArrayList<SmackServiceNode>();
+        final List<SmackServiceNode> ssns = new ArrayList<>();
 
         for (int i = 1; i <= users; i++) {
             final SmackServiceNode ssn = new SmackServiceNode(getTcpConnection(server, port, timeout), timeout);
@@ -262,7 +250,7 @@ public class SmackServiceNodeTest {
         Thread.sleep(250);
 
         for (int i = 0; i < users - 1; i++) {
-            Roster.getInstanceFor(ssns.get(i).getConnection()).createEntry(ssns.get(i + 1).getConnection().getUser().asBareJid(), "test", new String[]{});
+            Roster.getInstanceFor(ssns.get(i).getConnection()).createItemAndRequestSubscription(ssns.get(i + 1).getConnection().getUser().asBareJid(), "test", new String[]{});
             ssns.get(i + 1).addTrackerEntry(new TrackerEntry(TrackerEntry.Type.relay, TrackerEntry.Policy._public, ssns.get(i + 1).getConnection().getUser(), JingleChannelIQ.UDP));
             ssns.get(i).addTrackerEntry(new TrackerEntry(TrackerEntry.Type.tracker, TrackerEntry.Policy._public, ssns.get(i + 1).getConnection().getUser(), JingleChannelIQ.UDP));
         }

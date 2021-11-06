@@ -1,7 +1,5 @@
 package org.xmpp.jnodes.nio;
 
-import junit.framework.TestCase;
-
 import java.net.InetSocketAddress;
 
 import org.junit.Test;

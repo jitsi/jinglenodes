@@ -29,70 +29,62 @@ public class SelDatagramChannel {
                 Thread.yield();
             }
 
-            final Runnable task = new Runnable() {
-                @Override
-                public void run() {
-                    while (true) {
-                        try {
-                            final int n;
+            final Runnable task = () -> {
+                while (true) {
+                    try {
+                        final int n;
 
-                            synchronized (obj) {
-                            }
-                            n = selector.select();
+                        synchronized (obj) {
+                        }
+                        n = selector.select();
 
-                            if (n == 0) {
-                                Thread.sleep(50);
-                                Thread.yield();
-                                continue;
-                            }
+                        if (n == 0) {
+                            Thread.sleep(50);
+                            Thread.yield();
+                            continue;
+                        }
 
-                            final Set keys = selector.selectedKeys();
+                        final Set<SelectionKey> keys = selector.selectedKeys();
 
-                            // Iterate through the Set of keys.
-                            for (Iterator i = keys.iterator(); i.hasNext();) {
-                                // Get a key from the set, and remove it from the set
-                                final SelectionKey key = (SelectionKey) i.next();
-                                i.remove();
+                        // Iterate through the Set of keys.
+                        for (Iterator<SelectionKey> i = keys.iterator(); i.hasNext();) {
+                            // Get a key from the set, and remove it from the set
+                            final SelectionKey key = i.next();
+                            i.remove();
 
-                                // Get the channel associated with the key
-                                final DatagramChannel c = (DatagramChannel) key.channel();
+                            // Get the channel associated with the key
+                            final DatagramChannel c = (DatagramChannel) key.channel();
 
-                                if (key.isValid() && key.isReadable()) {
-                                    final SelDatagramChannel sdc = (SelDatagramChannel) key.attachment();
+                            if (key.isValid() && key.isReadable()) {
+                                final SelDatagramChannel sdc = (SelDatagramChannel) key.attachment();
 
-                                    if (sdc == null) {
-                                        // Discard Packet
-                                        c.receive(ByteBuffer.allocate(0));
-                                        continue;
-                                    }
-
-                                    final ByteBuffer b = ByteBuffer.allocateDirect(1450);
-                                    final SocketAddress clientAddress;
-                                    synchronized (sdc) {
-                                        clientAddress = sdc.channel.receive(b);
-                                    }
-                                    // If we got the datagram successfully, broadcast the Event
-                                    if (clientAddress != null) {
-                                        // Execute in a different Thread avoid serialization
-                                        if (sdc.datagramListener != null) {
-                                            executorService.submit(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    sdc.datagramListener.datagramReceived(sdc, b, clientAddress);
-                                                }
-                                            });
-                                        }
-                                    }
-
+                                if (sdc == null) {
+                                    // Discard Packet
+                                    c.receive(ByteBuffer.allocate(0));
+                                    continue;
                                 }
-                            }
 
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                                final ByteBuffer b = ByteBuffer.allocateDirect(1450);
+                                final SocketAddress clientAddress;
+                                synchronized (sdc) {
+                                    clientAddress = sdc.channel.receive(b);
+                                }
+                                // If we got the datagram successfully, broadcast the Event
+                                if (clientAddress != null) {
+                                    // Execute in a different Thread avoid serialization
+                                    if (sdc.datagramListener != null) {
+                                        executorService.submit(() -> sdc.datagramListener.datagramReceived(sdc, b, clientAddress));
+                                    }
+                                }
+
+                            }
                         }
-                        catch (Throwable t) {
-                            t.printStackTrace();
-                        }
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    catch (Exception t) {
+                        t.printStackTrace();
                     }
                 }
             };

@@ -40,9 +40,9 @@ import org.xmpp.jnodes.RelayChannel;
 public class SmackServiceNode implements ConnectionListener {
 
     private final AbstractXMPPConnection connection;
-    private final ConcurrentHashMap<String, RelayChannel> channels = new ConcurrentHashMap<String, RelayChannel>();
-    private final Map<Jid, TrackerEntry> trackerEntries = Collections.synchronizedMap(new LinkedHashMap<Jid, TrackerEntry>());
-    private long timeout = 60000;
+    private final ConcurrentHashMap<String, RelayChannel> channels = new ConcurrentHashMap<>();
+    private final Map<Jid, TrackerEntry> trackerEntries = Collections.synchronizedMap(new LinkedHashMap<>());
+    private long timeout;
     private final static ExecutorService executorService = Executors.newCachedThreadPool(); 
     private final ScheduledThreadPoolExecutor scheduledExecutor = new ScheduledThreadPoolExecutor(1);
     private final AtomicInteger ids = new AtomicInteger(0);
@@ -83,17 +83,14 @@ public class SmackServiceNode implements ConnectionListener {
     }
 
     private void setup() {
-        scheduledExecutor.scheduleWithFixedDelay(new Runnable() {
-            @Override
-            public void run() {
-                for (final RelayChannel c : channels.values()) {
-                    final long current = System.currentTimeMillis();
-                    final long da = current - c.getLastReceivedTimeA();
-                    final long db = current - c.getLastReceivedTimeB();
+        scheduledExecutor.scheduleWithFixedDelay(() -> {
+            for (final RelayChannel c : channels.values()) {
+                final long current = System.currentTimeMillis();
+                final long da = current - c.getLastReceivedTimeA();
+                final long db = current - c.getLastReceivedTimeB();
 
-                    if (da > timeout || db > timeout) {
-                        removeChannel(c);
-                    }
+                if (da > timeout || db > timeout) {
+                    removeChannel(c);
                 }
             }
         }, timeout, timeout, TimeUnit.MILLISECONDS);
@@ -149,21 +146,6 @@ public class SmackServiceNode implements ConnectionListener {
     @Override
     public void connectionClosedOnError(Exception e) {
         closeAllChannels();
-    }
-
-    @Override
-    public void reconnectingIn(int i) {
-
-    }
-
-    @Override
-    public void reconnectionSuccessful() {
-
-    }
-
-    @Override
-    public void reconnectionFailed(Exception e) {
-
     }
 
     protected IQ createUdpChannel(final JingleChannelIQ iq) {
@@ -263,21 +245,18 @@ public class SmackServiceNode implements ConnectionListener {
 
     public static Future<MappedNodes> aSyncSearchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol, final boolean searchBuddies) {
         final MappedNodes mappedNodes = new MappedNodes();
-        final Runnable bgTask = new Runnable(){
-            @Override
-            public void run() {
-                try {
-                    searchServices(new ConcurrentHashMap<Jid, Jid>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol, searchBuddies, mappedNodes);
-                } catch (NotConnectedException | InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
+        final Runnable bgTask = () -> {
+            try {
+                searchServices(new ConcurrentHashMap<>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol, searchBuddies, mappedNodes);
+            } catch (NotConnectedException | InterruptedException e) {
+                throw new RuntimeException(e);
             }
         };
         return executorService.submit(bgTask, mappedNodes);
     }
 
     public static MappedNodes searchServices(final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol, final boolean searchBuddies) throws NotConnectedException, InterruptedException {
-        return searchServices(new ConcurrentHashMap<Jid, Jid>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol, searchBuddies, new MappedNodes());
+        return searchServices(new ConcurrentHashMap<>(), xmppConnection, maxEntries, maxDepth, maxSearchNodes, protocol, searchBuddies, new MappedNodes());
     }
 
     private static MappedNodes searchServices(final ConcurrentHashMap<Jid, Jid> visited, final XMPPConnection xmppConnection, final int maxEntries, final int maxDepth, final int maxSearchNodes, final String protocol, final boolean searchBuddies, final MappedNodes mappedNodes) throws NotConnectedException, InterruptedException {
@@ -321,8 +300,8 @@ public class SmackServiceNode implements ConnectionListener {
     }
 
     public static class MappedNodes {
-        final Map<Jid, TrackerEntry> relayEntries = Collections.synchronizedMap(new LinkedHashMap<Jid, TrackerEntry>());
-        final Map<Jid, TrackerEntry> trackerEntries = Collections.synchronizedMap(new LinkedHashMap<Jid, TrackerEntry>());
+        final Map<Jid, TrackerEntry> relayEntries = Collections.synchronizedMap(new LinkedHashMap<>());
+        final Map<Jid, TrackerEntry> trackerEntries = Collections.synchronizedMap(new LinkedHashMap<>());
 
         public Map<Jid, TrackerEntry> getRelayEntries() {
             return relayEntries;

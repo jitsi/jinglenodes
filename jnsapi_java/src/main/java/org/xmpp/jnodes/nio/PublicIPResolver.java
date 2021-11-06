@@ -3,7 +3,6 @@ package org.xmpp.jnodes.nio;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
@@ -11,15 +10,15 @@ public class PublicIPResolver {
 
     final static byte BINDING_REQUEST_ID = 0x0001;
     final static int MAPPED_ADDRESS = 0x0001;
-    final static byte CHANGE_REQUEST_NO_CHANGE[] = {0, 3, 0, 4, 0, 0, 0, 0};
+    final static byte[] CHANGE_REQUEST_NO_CHANGE = {0, 3, 0, 4, 0, 0, 0, 0};
     final static Random r = new Random(System.nanoTime());
 
-    private static byte[] getHeader(final int contentLenght) {
-        final byte header[] = new byte[20];
+    private static byte[] getHeader(final int contentLength) {
+        final byte[] header = new byte[20];
         header[0] = 0;
         header[1] = BINDING_REQUEST_ID;
         header[2] = 0;
-        header[3] = (byte) contentLenght;
+        header[3] = (byte) contentLength;
         header[4] = (byte) (r.nextInt(9));
         header[5] = (byte) (r.nextInt(8));
         header[6] = (byte) (r.nextInt(7));
@@ -28,8 +27,8 @@ public class PublicIPResolver {
     }
 
     public static ByteBuffer createSTUNChangeRequest() {
-        final byte header[] = getHeader(CHANGE_REQUEST_NO_CHANGE.length);
-        final byte data[] = new byte[header.length + CHANGE_REQUEST_NO_CHANGE.length];
+        final byte[] header = getHeader(CHANGE_REQUEST_NO_CHANGE.length);
+        final byte[] data = new byte[header.length + CHANGE_REQUEST_NO_CHANGE.length];
         System.arraycopy(header, 0, data, 0, header.length);
         System.arraycopy(CHANGE_REQUEST_NO_CHANGE, 0, data, header.length, CHANGE_REQUEST_NO_CHANGE.length);
         return ByteBuffer.wrap(data);
@@ -75,8 +74,9 @@ public class PublicIPResolver {
                 int secondOctet = unsignedByteToInt(valueArray[5]);
                 int thirdOctet = unsignedByteToInt(valueArray[6]);
                 int fourthOctet = unsignedByteToInt(valueArray[7]);
-                final StringBuilder ip = new StringBuilder().append(firstOctet).append(".").append(secondOctet).append(".").append(thirdOctet).append(".").append(fourthOctet);
-                return new Header(new InetSocketAddress(ip.toString(), port), type, lengthValue + 4);
+                return new Header(new InetSocketAddress(
+                    firstOctet + "." + secondOctet + "." + thirdOctet + "."
+                        + fourthOctet, port), type, lengthValue + 4);
             }
         }
         return new Header(null, -1, lengthValue + 4);
@@ -137,14 +137,11 @@ public class PublicIPResolver {
 
         try {
 
-            channel.setDatagramListener(new DatagramListener() {
-                @Override
-                public void datagramReceived(SelDatagramChannel channel, ByteBuffer buffer, SocketAddress address) {
-                    final byte b[] = new byte[buffer.position()];
-                    buffer.rewind();
-                    buffer.get(b, 0, b.length);
-                    h[0] = parseResponse(b);
-                }
+            channel.setDatagramListener((channel1, buffer, address) -> {
+                final byte[] b = new byte[buffer.position()];
+                buffer.rewind();
+                buffer.get(b, 0, b.length);
+                h[0] = parseResponse(b);
             });
 
             channel.send(createSTUNChangeRequest(), new InetSocketAddress(stunServer, port));
@@ -162,6 +159,7 @@ public class PublicIPResolver {
         } catch (IOException e) {
             return null;
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             return null;
         }
     }

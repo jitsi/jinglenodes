@@ -29,23 +29,20 @@ public class MockSocket {
         i = new AtomicInteger(0);
         address = new InetSocketAddress(localIP, port);
 
-        final DatagramListener dl = new DatagramListener() {
-            @Override
-            public void datagramReceived(final SelDatagramChannel channel, final ByteBuffer buffer, final SocketAddress address) {
-                try {
-                    final int aux = buffer.position();
-                    final byte[] bt = new byte[aux];
-                    buffer.rewind();
-                    buffer.get(bt, 0, aux);
-                    if (Arrays.equals(bt, b)) {
-                        i.incrementAndGet();
-                    } else {
-                        System.out.println("Invalid Buffer Content.");
-                    }
+        final DatagramListener dl = (channel, buffer, address) -> {
+            try {
+                final int aux = buffer.position();
+                final byte[] bt = new byte[aux];
+                buffer.rewind();
+                buffer.get(bt, 0, aux);
+                if (Arrays.equals(bt, b)) {
+                    i.incrementAndGet();
+                } else {
+                    System.out.println("Invalid Buffer Content.");
                 }
-                catch (Exception e) {
-                    e.printStackTrace();
-                }
+            }
+            catch (Exception e) {
+                e.printStackTrace();
             }
         };
 

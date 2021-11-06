@@ -20,7 +20,7 @@ public class TrackerEntry {
     private Type type;
     private Policy policy;
     private boolean verified = false;
-    private String protocol = JingleChannelIQ.UDP;
+    private String protocol;
     private Jid jid;
 
     public TrackerEntry(final Type type, final Policy policy, final Jid jid, final String protocol) {

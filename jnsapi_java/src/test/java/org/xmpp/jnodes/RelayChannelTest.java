@@ -21,37 +21,33 @@ import static org.junit.Assert.assertNotNull;
 
 public class RelayChannelTest {
 
-    final static String encode = "UTF-8";
     final static String localIP = "127.0.0.1";
     private final static ExecutorService executorService = Executors.newCachedThreadPool();
 
     @Test
     public void testDatagramChannels() {
-        final List<Future> futures = new ArrayList<Future>();
+        final List<Future<?>> futures = new ArrayList<>();
         int max = 1;
 
         for (int i = 0; i < max; i++) {
             final int ii = i;
-            futures.add(executorService.submit(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        socketTest(new MockSocket.ChannelProvider() {
-                            @Override
-                            public SelDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
-                                return SelDatagramChannel.open(datagramListener, address);
-                            }
+            futures.add(executorService.submit(() -> {
+                try {
+                    socketTest(new MockSocket.ChannelProvider() {
+                        @Override
+                        public SelDatagramChannel open(DatagramListener datagramListener, SocketAddress address) throws IOException {
+                            return SelDatagramChannel.open(datagramListener, address);
+                        }
 
-                            @Override
-                            public String getName() {
-                                return "SelDatagramChannel";
-                            }
-                        }, 1500 * ii + 10000, 1500 * ii + 11000);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+                        @Override
+                        public String getName() {
+                            return "SelDatagramChannel";
+                        }
+                    }, 1500 * ii + 10000, 1500 * ii + 11000);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
             }));
         }
@@ -65,7 +61,7 @@ public class RelayChannelTest {
                 e.printStackTrace();
             }
             finished = true;
-            for (final Future f : futures) {
+            for (final Future<?> f : futures) {
                 finished &= f.isDone();
             }
         }
@@ -97,8 +93,8 @@ public class RelayChannelTest {
         final int num = 2;
         final int packets = 10;
         final int tests = 1;
-        final List<MockSocket> cs = new ArrayList<MockSocket>();
-        final List<RelayChannel> rc = new ArrayList<RelayChannel>();
+        final List<MockSocket> cs = new ArrayList<>();
+        final List<RelayChannel> rc = new ArrayList<>();
 
         for (int i = 0, j = 0, l = 0; i < num; i++, j++, l++) {
             for (int t = 0; t < num; t++) {
@@ -129,38 +125,35 @@ public class RelayChannelTest {
         final AtomicInteger fSent = new AtomicInteger(0);
 
         for (int h = 0; h < tests; h++) {
-            final List<Future> futures = new ArrayList<Future>();
+            final List<Future<?>> futures = new ArrayList<>();
 
             final long start = System.currentTimeMillis();
 
             for (int ii = 0; ii < packets; ii++) {
-                futures.add(executorService.submit(new Runnable() {
-                    @Override
-                    public void run() {
-                        final AtomicInteger sent = new AtomicInteger(0);
-                        for (int i = 0; i < num; i++) {
-                            final MockSocket a = cs.get(i);
-                            final MockSocket b = i % 2 == 0 ? cs.get(i + 1) : cs.get(i - 1);
+                futures.add(executorService.submit(() -> {
+                    final AtomicInteger sent = new AtomicInteger(0);
+                    for (int i = 0; i < num; i++) {
+                        final MockSocket a = cs.get(i);
+                        final MockSocket b = i % 2 == 0 ? cs.get(i + 1) : cs.get(i - 1);
 
-                            final RelayChannel c = rc.get(i / 2);
-                            final SocketAddress d = i % 2 == 0 ? c.getAddressA() : c.getAddressB();
+                        final RelayChannel c = rc.get(i / 2);
+                        final SocketAddress d = i % 2 == 0 ? c.getAddressA() : c.getAddressB();
 
-                            try {
-                                int ss = 0;
-                                while (ss == 0) {
-                                    ss = a.getChannel().send(b.getExpectedBuffer().duplicate(), d);
-                                    if (ss == 0) {
-                                        System.out.println("Retrying Send...");
-                                    } else {
-                                        sent.incrementAndGet();
-                                    }
+                        try {
+                            int ss = 0;
+                            while (ss == 0) {
+                                ss = a.getChannel().send(b.getExpectedBuffer().duplicate(), d);
+                                if (ss == 0) {
+                                    System.out.println("Retrying Send...");
+                                } else {
+                                    sent.incrementAndGet();
                                 }
-                            } catch (IOException e) {
-                                e.printStackTrace();
                             }
+                        } catch (IOException e) {
+                            e.printStackTrace();
                         }
-                        fSent.incrementAndGet();
                     }
+                    fSent.incrementAndGet();
                 }));
             }
 
@@ -169,7 +162,7 @@ public class RelayChannelTest {
             while (!finished) {
                 Thread.sleep(1);
                 finished = true;
-                for (final Future f : futures) {
+                for (final Future<?> f : futures) {
                     finished &= f.isDone();
                 }
             }
@@ -218,7 +211,7 @@ public class RelayChannelTest {
         final int num = 2;
         int packets = 25;
         int tests = 100;
-        final List<MockSocket> cs = new ArrayList<MockSocket>();
+        final List<MockSocket> cs = new ArrayList<>();
 
         for (int i = 0, j = 0; i < num; i++, j++) {
             for (int t = 0; t < 50; t++) {
@@ -306,10 +299,10 @@ public class RelayChannelTest {
     public void testSocketPerformanceConcurrent() {
         int max = 100;
         int t = 10;
-        final List<List<SelDatagramChannel>> lists = new ArrayList<List<SelDatagramChannel>>();
+        final List<List<SelDatagramChannel>> lists = new ArrayList<>();
 
         for (int i = 0; i < t; i++) {
-            lists.add(new ArrayList<SelDatagramChannel>());
+            lists.add(new ArrayList<>());
         }
 
         int r = 0;
@@ -328,24 +321,21 @@ public class RelayChannelTest {
 
         for (int i = 0; i < t; i++) {
             final int tt = t;
-            executorService.submit(new Runnable() {
-                @Override
-                public void run() {
-                    for (final SelDatagramChannel c : lists.get(tt)) {
-                        try {
-                            c.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+            executorService.submit(() -> {
+                for (final SelDatagramChannel c : lists.get(tt)) {
+                    try {
+                        c.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
                 }
             });
         }
     }
 
-    public static void main(String args[]) {
+    public static void main(String[] args) {
         try {
-            testDatagramChannelsExternal(Integer.valueOf(args[1]), Integer.valueOf(args[2]));
+            testDatagramChannelsExternal(Integer.parseInt(args[1]), Integer.parseInt(args[2]));
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {

@@ -5,7 +5,7 @@ import org.jxmpp.jid.Jid;
 
 public class JingleChannelIQ extends IQ {
 
-    public static final String NAME = "channel";
+    public static final String ELEMENT = "channel";
     public static final String NAMESPACE = "http://jabber.org/protocol/jinglenodes#channel";
 
     public static final String UDP= "udp";
@@ -18,7 +18,7 @@ public class JingleChannelIQ extends IQ {
     private String id;
 
     public JingleChannelIQ() {
-        super(NAME, NAMESPACE);
+        super(ELEMENT, NAMESPACE);
         this.setType(Type.get);
     }
 
@@ -92,7 +92,7 @@ public class JingleChannelIQ extends IQ {
     }
 
     public static IQ createIQ(String id, Jid to, Jid from, IQ.Type type) {
-        IQ iqPacket = new IQ(NAME, NAMESPACE) {
+        IQ iqPacket = new IQ(ELEMENT, NAMESPACE) {
             @Override
             protected IQChildElementXmlStringBuilder getIQChildElementBuilder(IQChildElementXmlStringBuilder xml) {
                 return xml;

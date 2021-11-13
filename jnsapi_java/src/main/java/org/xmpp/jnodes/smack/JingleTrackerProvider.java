@@ -50,7 +50,7 @@ public class JingleTrackerProvider extends IqProvider<JingleTrackerIQ>
                 }
 
             } else if (eventType == Event.END_ELEMENT) {
-                if (elementName.equals(JingleTrackerIQ.NAME)) {
+                if (elementName.equals(JingleTrackerIQ.ELEMENT)) {
                     done = true;
                 }
             }

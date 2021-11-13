@@ -42,14 +42,14 @@ public class SmackServiceNode implements ConnectionListener {
     private final AbstractXMPPConnection connection;
     private final ConcurrentHashMap<String, RelayChannel> channels = new ConcurrentHashMap<>();
     private final Map<Jid, TrackerEntry> trackerEntries = Collections.synchronizedMap(new LinkedHashMap<>());
-    private long timeout;
+    private final long timeout;
     private final static ExecutorService executorService = Executors.newCachedThreadPool(); 
     private final ScheduledThreadPoolExecutor scheduledExecutor = new ScheduledThreadPoolExecutor(1);
     private final AtomicInteger ids = new AtomicInteger(0);
 
     static {
-        ProviderManager.addIQProvider(JingleChannelIQ.NAME, JingleChannelIQ.NAMESPACE, new JingleNodesProvider());
-        ProviderManager.addIQProvider(JingleTrackerIQ.NAME, JingleTrackerIQ.NAMESPACE, new JingleTrackerProvider());
+        ProviderManager.addIQProvider(JingleChannelIQ.ELEMENT, JingleChannelIQ.NAMESPACE, new JingleNodesProvider());
+        ProviderManager.addIQProvider(JingleTrackerIQ.ELEMENT, JingleTrackerIQ.NAMESPACE, new JingleTrackerProvider());
     }
 
     public SmackServiceNode(final AbstractXMPPConnection connection, final long timeout) {
@@ -102,7 +102,7 @@ public class SmackServiceNode implements ConnectionListener {
 
     private class JingleChannelIqRequestHandler extends AbstractIqRequestHandler {
         protected JingleChannelIqRequestHandler() {
-            super(JingleChannelIQ.NAME, JingleChannelIQ.NAMESPACE, IQ.Type.get, Mode.sync);
+            super(JingleChannelIQ.ELEMENT, JingleChannelIQ.NAMESPACE, IQ.Type.get, Mode.sync);
         }
 
         @Override
@@ -113,7 +113,7 @@ public class SmackServiceNode implements ConnectionListener {
 
     private class JingleTrackerIqRequestHandler extends AbstractIqRequestHandler {
         protected JingleTrackerIqRequestHandler() {
-            super(JingleTrackerIQ.NAME, JingleTrackerIQ.NAMESPACE, IQ.Type.get, Mode.sync);
+            super(JingleTrackerIQ.ELEMENT, JingleTrackerIQ.NAMESPACE, IQ.Type.get, Mode.sync);
         }
 
         @Override

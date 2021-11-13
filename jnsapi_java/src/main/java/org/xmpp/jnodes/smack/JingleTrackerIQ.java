@@ -8,13 +8,13 @@ import org.jxmpp.jid.Jid;
 
 public class JingleTrackerIQ extends IQ {
 
-    public static final String NAME = "services";
+    public static final String ELEMENT = "services";
     public static final String NAMESPACE = "http://jabber.org/protocol/jinglenodes";
 
     private final ConcurrentHashMap<Jid, TrackerEntry> entries = new ConcurrentHashMap<Jid, TrackerEntry>();
 
     public JingleTrackerIQ() {
-        super(NAME, NAMESPACE);
+        super(ELEMENT, NAMESPACE);
         this.setType(Type.get);
     }
 

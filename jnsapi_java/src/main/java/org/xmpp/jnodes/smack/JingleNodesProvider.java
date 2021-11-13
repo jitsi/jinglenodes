@@ -4,7 +4,6 @@ import java.io.*;
 import java.util.IllegalFormatException;
 
 import org.jivesoftware.smack.packet.*;
-import org.jivesoftware.smack.parsing.*;
 import org.jivesoftware.smack.provider.*;
 import org.jivesoftware.smack.xml.*;
 import org.jivesoftware.smack.xml.XmlPullParser.*;
@@ -30,7 +29,7 @@ public class JingleNodesProvider extends IqProvider<JingleChannelIQ>
             namespace = parser.getNamespace();
 
             if (eventType == Event.START_ELEMENT) {
-                if (elementName.equals(JingleChannelIQ.NAME) && namespace.equals(JingleChannelIQ.NAMESPACE)) {
+                if (elementName.equals(JingleChannelIQ.ELEMENT) && namespace.equals(JingleChannelIQ.NAMESPACE)) {
 
                     final String protocol = parser.getAttributeValue(null, "protocol");
                     final String porta = parser.getAttributeValue(null, "localport");
